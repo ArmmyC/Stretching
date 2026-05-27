@@ -304,10 +304,6 @@
         <div class="value" id="micValue">-</div>
       </div>
       <div class="stat">
-        <div class="label">Environment</div>
-        <div class="value" id="environmentValue">-</div>
-      </div>
-      <div class="stat">
         <div class="label">Samples</div>
         <div class="value" id="sampleValue">0</div>
       </div>
@@ -345,17 +341,16 @@
       { key: "green", label: "Color green", unit: "", color: "#16a34a", main: false },
       { key: "blue", label: "Color blue", unit: "", color: "#2563eb", main: false },
       { key: "pressure_hpa", label: "Pressure", unit: "hPa", color: "#0369a1", main: true },
-      { key: "temperature_c", label: "Temperature", unit: "C", color: "#c2410c", main: true },
-      { key: "humidity", label: "Humidity", unit: "%", color: "#0284c7", main: true, fixedMin: 0, fixedMax: 100 },
       { key: "mic_level", label: "Mic level", unit: "%", color: "#be123c", main: true, fixedMin: 0, fixedMax: 100 },
       { key: "mic_rms", label: "Mic RMS", unit: "", color: "#e11d48", main: false },
       { key: "mic_peak", label: "Mic peak", unit: "", color: "#f43f5e", main: false },
+      { key: "mic_avg_abs", label: "Mic avg abs", unit: "", color: "#fb7185", main: false },
       { key: "mic_dbfs", label: "Mic dBFS", unit: "dB", color: "#9f1239", main: true, fixedMin: -90, fixedMax: 0 },
+      { key: "mic_samples", label: "Mic samples", unit: "", color: "#881337", main: false, fixedMin: 0, fixedMax: 256 },
       { key: "gesture_code", label: "Gesture code", unit: "", color: "#64748b", main: false, fixedMin: -1, fixedMax: 4 },
       { key: "mag_ok_num", label: "Mag OK", unit: "", color: "#4f46e5", main: false, fixedMin: 0, fixedMax: 100 },
       { key: "apds_ok_num", label: "APDS OK", unit: "", color: "#0e7490", main: false, fixedMin: 0, fixedMax: 100 },
       { key: "baro_ok_num", label: "Baro OK", unit: "", color: "#0369a1", main: false, fixedMin: 0, fixedMax: 100 },
-      { key: "env_ok_num", label: "Env OK", unit: "", color: "#0284c7", main: false, fixedMin: 0, fixedMax: 100 },
       { key: "mic_ok_num", label: "Mic OK", unit: "", color: "#be123c", main: false, fixedMin: 0, fixedMax: 100 },
       { key: "arm_raised_num", label: "Arm raised", unit: "", color: "#0f766e", main: true, fixedMin: 0, fixedMax: 100 },
       { key: "stable_num", label: "Stable hold", unit: "", color: "#65a30d", main: true, fixedMin: 0, fixedMax: 100 },
@@ -386,7 +381,6 @@
       magValue: document.getElementById("magValue"),
       proximityValue: document.getElementById("proximityValue"),
       micValue: document.getElementById("micValue"),
-      environmentValue: document.getElementById("environmentValue"),
       sampleValue: document.getElementById("sampleValue")
     };
 
@@ -413,7 +407,6 @@
       sample.mag_ok_num = sample.mag_ok ? 100 : 0;
       sample.apds_ok_num = sample.apds_ok ? 100 : 0;
       sample.baro_ok_num = sample.baro_ok ? 100 : 0;
-      sample.env_ok_num = sample.env_ok ? 100 : 0;
       sample.mic_ok_num = sample.mic_ok ? 100 : 0;
       if (typeof sample.state_code !== "number") {
         sample.state_code = stateCodeFromName(sample.state);
@@ -662,12 +655,11 @@
         els.gyroAvgValue.textContent = formatValue(Number(latest.gyro_avg), "deg/s");
         els.magValue.textContent = formatValue(Number(latest.mag_mag), "uT");
         els.proximityValue.textContent = formatValue(Number(latest.proximity), "");
-        els.micValue.textContent = formatValue(Number(latest.mic_level), "%");
-        const temp = Number(latest.temperature_c);
-        const humidity = Number(latest.humidity);
-        els.environmentValue.textContent = Number.isFinite(temp) || Number.isFinite(humidity)
-          ? `${Number.isFinite(temp) ? temp.toFixed(1) + " C" : "-"} / ${Number.isFinite(humidity) ? humidity.toFixed(0) + "%" : "-"}`
-          : "-";
+        const micLevel = Number(latest.mic_level);
+        const micSamples = Number(latest.mic_samples);
+        els.micValue.textContent = Number.isFinite(micSamples)
+          ? `${formatValue(micLevel, "%")} / ${micSamples} samples`
+          : formatValue(micLevel, "%");
       }
       els.sampleValue.textContent = samples.length.toString();
 

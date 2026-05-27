@@ -22,7 +22,8 @@
 - Nano now has JSON output for app/dashboard use and labelled plotter output for Arduino Serial Plotter.
 - Added a dependency-free Web Serial dashboard that plots individual Nano signal lines in Chrome or Edge.
 - Added Nano `OUTPUT_FULL_JSON` mode at 10 Hz for optional onboard sensors without changing the default compact 20 Hz UNO Q stream.
-- Added optional Nano reads for magnetometer, APDS9960 proximity/light/color/gesture, LPS22HB pressure, HTS221 or HS300x temperature/humidity, and PDM microphone level.
+- Added optional Nano reads for Sense Lite magnetometer, APDS9960 proximity/light/color/gesture, LPS22HB pressure, and PDM microphone level.
+- Disabled temperature/humidity by default because Nano 33 BLE Sense Lite does not include that sensor.
 - Used non-blocking `millis()` timing for calibration, serial parsing, output, distance reads, feedback, debounce, and hold timing.
 - Added 300 ms state debounce to reduce flicker into `HOLD_STEADY` and `UNSTABLE`.
 - Hold time resets only after sustained bad form for 1200 ms.
@@ -37,8 +38,6 @@
 - Nano optional onboard sensors:
   - `Arduino_APDS9960` for proximity, gesture, RGB color, and ambient light.
   - `Arduino_LPS22HB` for pressure.
-  - `Arduino_HTS221` for original Sense temperature/humidity.
-  - `Arduino_HS300x` for Rev2 temperature/humidity.
   - `PDM` for microphone loudness metrics.
 - UNO Q optional:
   - `Arduino_Modulino` for `ModulinoDistance`, `ModulinoPixels`, `ModulinoBuzzer`, and `ModulinoButtons`.
@@ -54,8 +53,8 @@ Nano:
 - `USE_MAGNETOMETER`
 - `USE_APDS9960_SENSOR`
 - `USE_BAROMETER_SENSOR`
-- `USE_ENVIRONMENT_SENSOR`
 - `USE_PDM_MICROPHONE`
+- `USE_ENVIRONMENT_SENSOR` defaults to `0` for Sense Lite and is only for non-Lite boards.
 - `ENV_BACKEND_HTS221`
 - `ENV_BACKEND_HS300X`
 
@@ -84,7 +83,7 @@ UNO Q:
 - Some tutorials still show `#include <Modulino.h>`, so the sketch checks both headers.
 - LCD support is stubbed because no exact LCD library or wiring was specified.
 - `Serial1` is enabled for the Nano UART path; set `USE_NANO_ON_SERIAL1 0` if the selected UNO Q board profile does not expose `Serial1`.
-- The exact Nano variant matters: original Sense uses `Arduino_LSM9DS1` and `Arduino_HTS221`; Rev2-style boards use `Arduino_BMI270_BMM150` and `Arduino_HS300x`.
+- The exact Nano variant matters: Sense Lite is treated as having no temperature/humidity sensor; original full Sense and Rev2-style boards can opt into environment libraries manually.
 - The microphone dashboard values are derived loudness metrics only. The firmware does not stream or store raw audio.
 
 ## Tests Performed
@@ -94,7 +93,9 @@ UNO Q:
 - Ran a local static file sanity check for balanced braces, parentheses, and brackets after stripping comments and strings.
 - Added a self-contained HTML dashboard and reviewed it for local-only Web Serial usage with no external assets or packages.
 - Parsed the dashboard JavaScript with Node's `Function` constructor to catch syntax errors.
-- Extended the dashboard signal list for magnetometer, proximity, light/color, pressure, temperature, humidity, microphone, and gesture fields.
+- Extended the dashboard signal list for magnetometer, proximity, light/color, pressure, microphone, and gesture fields.
+- Reworked the PDM microphone path around `PDM.h` callback samples, `PDM.setBufferSize(512)`, post-`begin()` gain, `mic_samples`, `mic_avg_abs`, and dBFS-scaled `mic_level`.
+- Removed temperature/humidity from the default dashboard because Nano 33 BLE Sense Lite does not include that sensor.
 - Added fallback JSON parsing so UNO Q can still accept simple messages when `ArduinoJson` is not installed.
 - Added automatic mock distance when the Modulino library is absent, enabling manual Serial Monitor testing without sensors.
 - Checked for `arduino-cli`; it is not installed in this workspace.
@@ -109,6 +110,7 @@ UNO Q:
 
 - Actual Arduino compilation was not run in this environment because board cores and hardware libraries are not installed in the workspace.
 - `arduino-cli` was not available on PATH.
+- In-app Browser validation of the local HTML file was blocked by the browser URL policy for `file://`; no alternate browser workaround was used.
 - Modulino hardware behavior must be verified on the actual UNO Q with the installed `Arduino_Modulino` library.
 - IMU backend must be selected against the exact Nano 33 BLE Sense Lite variant.
 

@@ -44,12 +44,12 @@ Full format:
   "gesture": "none",
   "pressure_kpa": 100.84,
   "pressure_hpa": 1008.4,
-  "temperature_c": 29.2,
-  "humidity": 54.0,
   "mic_rms": 410.2,
   "mic_peak": 1220,
+  "mic_avg_abs": 260.0,
   "mic_dbfs": -38.0,
-  "mic_level": 2.8,
+  "mic_level": 28.0,
+  "mic_samples": 256,
   "stable": true,
   "arm_raised": true,
   "state_code": 2,
@@ -82,12 +82,12 @@ OUTPUT_FULL_JSON
 OUTPUT_PLOTTER
 ```
 
-`OUTPUT_JSON` is the compact UNO-compatible stream. `OUTPUT_FULL_JSON` adds optional dashboard fields for magnetometer, APDS9960 proximity/light/color/gesture, LPS22HB barometer, HTS221/HS300x temperature and humidity, and PDM microphone level. Fields for unavailable libraries or sensors remain at default values and publish companion booleans such as `apds_ok`, `baro_ok`, `env_ok`, and `mic_ok`.
+`OUTPUT_JSON` is the compact UNO-compatible stream. `OUTPUT_FULL_JSON` adds optional dashboard fields for Nano 33 BLE Sense Lite: magnetometer, APDS9960 proximity/light/color/gesture, LPS22HB barometer, and PDM microphone level. Temperature and humidity are disabled by default because the Lite board does not include that sensor. Fields for unavailable libraries or sensors remain at default values and publish companion booleans such as `apds_ok`, `baro_ok`, and `mic_ok`.
 
 `PLOTTER_ON` and `OUTPUT_PLOTTER` switch the Nano from JSON to labelled numeric output for Arduino Serial Plotter:
 
 ```text
-pitch:61.8	roll:4.0	relative_pitch:57.9	arm_threshold:55.0	gyro_mag:8.3	gyro_avg:7.8	stability_threshold:20.0	stability_score:61	mx:12.4	my:-3.1	mz:40.2	mag_mag:42.2	heading_deg:346.0	proximity:18	ambient:204	red:76	green:89	blue:102	pressure_hpa:1008.4	temperature_c:29.2	humidity:54.0	mic_level:2.8	mic_rms:410.2	mic_dbfs:-38.0	gesture_code:-1	arm_raised:100	stable:100	state_band:40
+pitch:61.8	roll:4.0	relative_pitch:57.9	arm_threshold:55.0	gyro_mag:8.3	gyro_avg:7.8	stability_threshold:20.0	stability_score:61	mx:12.4	my:-3.1	mz:40.2	mag_mag:42.2	heading_deg:346.0	proximity:18	ambient:204	red:76	green:89	blue:102	pressure_hpa:1008.4	mic_level:28.0	mic_rms:410.2	mic_avg_abs:260.0	mic_dbfs:-38.0	mic_samples:256	gesture_code:-1	arm_raised:100	stable:100	state_band:40
 ```
 
 Use `PLOTTER_OFF` or `OUTPUT_JSON` before connecting the Nano to the UNO Q sketch or the browser dashboard.

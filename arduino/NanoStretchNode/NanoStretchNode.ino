@@ -19,10 +19,10 @@
 #define USE_MAGNETOMETER 1
 #define USE_APDS9960_SENSOR 1
 #define USE_BAROMETER_SENSOR 1
-#define USE_ENVIRONMENT_SENSOR 1
+#define USE_ENVIRONMENT_SENSOR 0  // Nano 33 BLE Sense Lite does not include temp/humidity.
 #define USE_PDM_MICROPHONE 1
 
-// Original Nano 33 BLE Sense uses HTS221. Rev2-style boards use HS300x.
+// Optional for non-Lite boards only. Original Sense uses HTS221; Rev2 uses HS300x.
 #define ENV_BACKEND_HTS221
 // #define ENV_BACKEND_HS300X
 
@@ -103,7 +103,10 @@ const unsigned long ENV_READ_INTERVAL_MS = 1000;
 const unsigned long MAG_READ_INTERVAL_MS = 50;
 const int PDM_CHANNELS = 1;
 const int PDM_SAMPLE_RATE = 16000;
-const int PDM_GAIN = 20;
+const int PDM_GAIN = 30;
+const int PDM_BUFFER_BYTES = 512;
+const float MIC_LEVEL_FLOOR_DBFS = -70.0;
+const float MIC_LEVEL_CEILING_DBFS = -20.0;
 
 float armRaisedThresholdDeg = 55.0;
 float stabilityThresholdDps = 20.0;
@@ -151,6 +154,8 @@ float micRms = 0.0;
 float micPeak = 0.0;
 float micDbfs = -90.0;
 float micLevelPercent = 0.0;
+float micAvgAbs = 0.0;
+int micSampleCount = 0;
 
 int proximity = -1;
 int red = 0;
@@ -195,6 +200,7 @@ char gestureName[12] = "none";
 #if HAS_PDM_LIBRARY && USE_PDM_MICROPHONE
 short pdmSampleBuffer[256];
 volatile int pdmSamplesRead = 0;
+volatile bool pdmBufferReady = false;
 #endif
 
 const char *nanoStateName(NanoState state) {
@@ -281,12 +287,22 @@ void beginCalibration() {
 
 #if HAS_PDM_LIBRARY && USE_PDM_MICROPHONE
 void onPDMdata() {
+  if (pdmBufferReady) {
+    return;
+  }
+
   int bytesAvailable = PDM.available();
   if (bytesAvailable > (int)sizeof(pdmSampleBuffer)) {
     bytesAvailable = sizeof(pdmSampleBuffer);
   }
+
+  if (bytesAvailable <= 0) {
+    return;
+  }
+
   PDM.read((void *)pdmSampleBuffer, bytesAvailable);
   pdmSamplesRead = bytesAvailable / (int)sizeof(short);
+  pdmBufferReady = true;
 }
 #endif
 
@@ -332,8 +348,11 @@ void initOptionalSensors() {
 #if USE_PDM_MICROPHONE
   #if HAS_PDM_LIBRARY
     PDM.onReceive(onPDMdata);
-    PDM.setGain(PDM_GAIN);
+    PDM.setBufferSize(PDM_BUFFER_BYTES);
     micHealthy = PDM.begin(PDM_CHANNELS, PDM_SAMPLE_RATE);
+    if (micHealthy) {
+      PDM.setGain(PDM_GAIN);
+    }
     Serial.println(micHealthy ? "# PDM microphone ready" : "# WARN PDM microphone begin failed");
   #else
     Serial.println("# WARN PDM library not installed; microphone signals disabled");
@@ -541,11 +560,12 @@ void updateMicrophone() {
   int count = 0;
 
   noInterrupts();
-  count = pdmSamplesRead;
-  if (count > 0) {
+  if (pdmBufferReady) {
+    count = pdmSamplesRead;
     if (count > 256) count = 256;
     memcpy(localSamples, pdmSampleBuffer, count * sizeof(short));
     pdmSamplesRead = 0;
+    pdmBufferReady = false;
   }
   interrupts();
 
@@ -564,8 +584,10 @@ void updateMicrophone() {
 
   micRms = sqrt(sumSquares / (double)count);
   micPeak = peak;
+  micAvgAbs = (float)sumAbs / (float)count;
+  micSampleCount = count;
   micDbfs = 20.0 * log10(max(micRms, 1.0f) / 32768.0);
-  micLevelPercent = clampFloat(((float)sumAbs / (float)count) / 32768.0 * 100.0, 0.0, 100.0);
+  micLevelPercent = clampFloat((micDbfs - MIC_LEVEL_FLOOR_DBFS) / (MIC_LEVEL_CEILING_DBFS - MIC_LEVEL_FLOOR_DBFS) * 100.0, 0.0, 100.0);
 #endif
 }
 
@@ -649,20 +671,26 @@ void outputStatusJson(bool force) {
     Serial.print(pressureHpa, 1);
     Serial.print(",\"baro_ok\":");
     Serial.print(baroHealthy ? "true" : "false");
+    Serial.print(",\"env_ok\":");
+    Serial.print(envHealthy ? "true" : "false");
+#if USE_ENVIRONMENT_SENSOR
     Serial.print(",\"temperature_c\":");
     Serial.print(temperatureC, 1);
     Serial.print(",\"humidity\":");
     Serial.print(humidityPercent, 1);
-    Serial.print(",\"env_ok\":");
-    Serial.print(envHealthy ? "true" : "false");
+#endif
     Serial.print(",\"mic_rms\":");
     Serial.print(micRms, 1);
     Serial.print(",\"mic_peak\":");
     Serial.print(micPeak, 0);
+    Serial.print(",\"mic_avg_abs\":");
+    Serial.print(micAvgAbs, 1);
     Serial.print(",\"mic_dbfs\":");
     Serial.print(micDbfs, 1);
     Serial.print(",\"mic_level\":");
     Serial.print(micLevelPercent, 1);
+    Serial.print(",\"mic_samples\":");
+    Serial.print(micSampleCount);
     Serial.print(",\"mic_ok\":");
     Serial.print(micHealthy ? "true" : "false");
   }
@@ -722,16 +750,22 @@ void outputStatusPlotter(bool force) {
   Serial.print(blue);
   Serial.print("\tpressure_hpa:");
   Serial.print(pressureHpa, 1);
+#if USE_ENVIRONMENT_SENSOR
   Serial.print("\ttemperature_c:");
   Serial.print(temperatureC, 1);
   Serial.print("\thumidity:");
   Serial.print(humidityPercent, 1);
+#endif
   Serial.print("\tmic_level:");
   Serial.print(micLevelPercent, 1);
   Serial.print("\tmic_rms:");
   Serial.print(micRms, 1);
+  Serial.print("\tmic_avg_abs:");
+  Serial.print(micAvgAbs, 1);
   Serial.print("\tmic_dbfs:");
   Serial.print(micDbfs, 1);
+  Serial.print("\tmic_samples:");
+  Serial.print(micSampleCount);
   Serial.print("\tgesture_code:");
   Serial.print(gestureCode);
   Serial.print("\tarm_raised:");

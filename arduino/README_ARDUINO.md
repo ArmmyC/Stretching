@@ -67,7 +67,7 @@ Strap the Nano firmly to the forearm so the board moves with the arm. Keep the o
 - Nano:
   - `Arduino_LSM9DS1` for LSM9DS1 boards.
   - `Arduino_BMI270_BMM150` for Rev2-style BMI270/BMM150 boards.
-  - Optional full-sensor dashboard libraries: `Arduino_APDS9960`, `Arduino_LPS22HB`, `Arduino_HTS221` for original Sense temp/humidity, `Arduino_HS300x` for Rev2 temp/humidity, and `PDM` from the Arduino Mbed OS Nano boards package.
+  - Optional full-sensor dashboard libraries for Sense Lite: `Arduino_APDS9960`, `Arduino_LPS22HB`, and `PDM` from the Arduino Mbed OS Nano boards package. Temperature/humidity is disabled by default because the Lite board does not include that sensor.
 - UNO Q:
   - No hard dependency for serial-only mock testing.
   - `ArduinoJson` is recommended for robust JSON parsing. A small fallback parser is included for the simple messages in this prototype.
@@ -100,7 +100,7 @@ OUTPUT_JSON
 OUTPUT_FULL_JSON
 ```
 
-For live pattern hunting, open `arduino/tools/nano_signal_dashboard.html` in Chrome or Edge, click `Connect Nano`, and select the Nano serial port. The dashboard requests `OUTPUT_FULL_JSON` and plots IMU, magnetometer, APDS9960 proximity/light/color/gesture, barometer, temperature/humidity, microphone level, boolean classifications, and state code. See `NANO_SIGNAL_DASHBOARD.md`.
+For live pattern hunting, open `arduino/tools/nano_signal_dashboard.html` in Chrome or Edge, click `Connect Nano`, and select the Nano serial port. The dashboard requests `OUTPUT_FULL_JSON` and plots IMU, magnetometer, APDS9960 proximity/light/color/gesture, barometer, microphone level, boolean classifications, and state code. See `NANO_SIGNAL_DASHBOARD.md`.
 
 ## Test UNO Q Alone
 
