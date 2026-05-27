@@ -60,8 +60,8 @@ a {
   display: grid;
   align-content: center;
   justify-items: stretch;
-  gap: 28px;
-  width: min(1180px, 100%);
+  gap: 34px;
+  width: min(1120px, 100%);
   margin: 0 auto;
   padding: clamp(28px, 4vw, 54px);
   text-align: left;
@@ -69,31 +69,13 @@ a {
 
 .landing-hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 8px 24px;
-}
-
-.brand-mark {
-  width: 94px;
-  height: 94px;
-  display: grid;
-  place-items: center;
-  border: 3px solid var(--accent);
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(180, 255, 24, 0.16), rgba(37, 217, 230, 0.08));
-  box-shadow: 0 0 34px rgba(180, 255, 24, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  color: var(--accent);
-  transform: skew(-9deg);
-  font-size: 32px;
-  font-weight: 900;
-  grid-row: span 2;
+  gap: 12px;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(68px, 8.4vw, 112px);
-  line-height: 0.92;
+  font-size: clamp(64px, 8vw, 106px);
+  line-height: 0.95;
   letter-spacing: 0;
   text-shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
 }
@@ -129,10 +111,10 @@ h1 {
   position: relative;
   overflow: hidden;
   display: grid;
-  min-height: 214px;
+  min-height: 198px;
   align-content: space-between;
-  gap: 18px;
-  padding: 30px;
+  gap: 16px;
+  padding: 28px;
   border: 1px solid rgba(79, 104, 113, 0.76);
   border-radius: var(--radius);
   background:
@@ -197,9 +179,9 @@ h1 {
 
 .card-title {
   color: var(--accent);
-  font-size: clamp(38px, 4.4vw, 52px);
-  line-height: 0.98;
-  font-weight: 900;
+  font-size: clamp(36px, 4.1vw, 48px);
+  line-height: 1;
+  font-weight: 700;
 }
 
 .mode-card.after .card-title {
@@ -209,9 +191,9 @@ h1 {
 .card-desc {
   max-width: 440px;
   color: var(--text);
-  font-size: clamp(26px, 2.7vw, 34px);
-  line-height: 1.04;
-  font-weight: 850;
+  font-size: clamp(24px, 2.45vw, 30px);
+  line-height: 1.08;
+  font-weight: 500;
 }
 
 .card-meta {
@@ -222,14 +204,7 @@ h1 {
   background: rgba(5, 9, 11, 0.58);
   color: var(--muted);
   font-size: 20px;
-  font-weight: 800;
-}
-
-.landing-footer {
-  color: var(--muted);
-  font-size: 22px;
-  font-weight: 700;
-  text-align: center;
+  font-weight: 600;
 }
 
 .primary-action {
@@ -726,16 +701,6 @@ input[type="radio"] {
     grid-template-columns: 1fr;
   }
 
-  .landing-hero {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-  }
-
-  .brand-mark {
-    grid-row: auto;
-  }
-
   .landing-shell,
   .setup-shell,
   .session-shell {
@@ -754,12 +719,6 @@ input[type="radio"] {
   .landing-shell {
     gap: 14px;
     padding: 18px;
-  }
-
-  .brand-mark {
-    width: 64px;
-    height: 64px;
-    font-size: 24px;
   }
 
   h1 {

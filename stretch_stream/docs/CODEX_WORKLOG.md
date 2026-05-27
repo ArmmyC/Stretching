@@ -262,3 +262,53 @@ Polished the StretchSense kiosk UI to feel sharper, more professional, more attr
 - Verify the same landing page on the UNO Q HDMI display.
 - Confirm card touch/click targets feel good at the actual kiosk distance.
 - Continue keeping camera diagnostics out of `/` and reserved for setup/session/debug surfaces.
+
+## 2026-05-27 Landing Page Cleanup
+
+### Date / Time
+
+- 2026-05-27 18:57:40 +07:00
+
+### Files Changed
+
+- `stretch_stream/app/templates/landing.html`
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### What Changed
+
+- Removed the `SS` logo mark from the landing page.
+- Removed the `Local gym station · No account needed` footer from the landing page.
+- Reduced the visual weight of the landing card text so the page feels cleaner and less like a bold test screen.
+- Kept the two large selection cards and the same `/setup?mode=before` and `/setup?mode=after` links.
+
+### Design Decisions
+
+- Kept the landing page focused on only the title, subtitle, question, and two choices.
+- Preserved large kiosk-scale type while making the card headings and descriptions calmer.
+- Left camera status, phone streaming, source switching, and inference logic untouched.
+
+### Commands / Validation
+
+- Ran Python syntax check:
+  - `python -B -m py_compile app\main.py`
+- Ran CSS brace-balance check:
+  - `python -B -c "from pathlib import Path; css=Path('app/static/style.css').read_text(encoding='utf-8'); print('css braces', css.count('{'), css.count('}')); assert css.count('{') == css.count('}')"`
+- Started local rendered QA server:
+  - `.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010`
+- Checked health endpoint:
+  - `GET http://127.0.0.1:8010/api/health`
+- Browser-rendered checks:
+  - Confirmed the landing page no longer shows the `SS` logo mark.
+  - Confirmed the landing page no longer shows the `Local gym station · No account needed` footer.
+  - Confirmed the landing page still has one `/setup?mode=before` link and one `/setup?mode=after` link.
+  - Confirmed the landing page still has no camera source, FPS, force mode, phone waiting, or debug text.
+
+### Known Limitations
+
+- Rendered QA was performed locally at 1280x720; final visual verification should still be repeated on the target UNO Q monitor.
+
+### Next Steps
+
+- Validate the simplified landing page at kiosk distance.
+- Tune card font weight further if the physical display makes the text feel too heavy or too light.
