@@ -312,3 +312,66 @@ Polished the StretchSense kiosk UI to feel sharper, more professional, more attr
 
 - Validate the simplified landing page at kiosk distance.
 - Tune card font weight further if the physical display makes the text feel too heavy or too light.
+
+## 2026-05-27 Setup Page Redesign
+
+### Date / Time
+
+- 2026-05-27 19:27:19 +07:00
+
+### Files Changed
+
+- `stretch_stream/app/templates/setup.html`
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### What Changed
+
+- Removed the global top-right camera badge from `/setup`.
+- Kept only minimal `StretchSense` branding at the top left.
+- Added the required setup subtitle: `Choose a quick routine. The camera check stays on the right.`
+- Reworked the left panel into compact routine setup controls, routine preview, and a large `Start session` button.
+- Reworked the right panel into a `Camera check` panel with a camera/QR area and readiness cards.
+- Moved camera status into the camera check panel using small panel badges and readiness cards.
+- Added setup-only preview masking so the shared MJPEG stream's technical/scoring overlay is hidden on setup, with `Setup preview only · No score yet` shown for active camera previews.
+- Kept QR fallback inside the camera check panel for phone mode.
+
+### Design Decisions
+
+- Kept camera source, phone streaming, and inference code untouched.
+- Used template/CSS presentation to keep setup free of score and debug values without changing the shared `/video_feed` processing path.
+- Changed setup options into segmented rows so the full page fits a 1280x720 kiosk viewport without scrolling.
+- Kept technical FPS/AUTO-style values out of normal setup UI.
+
+### Commands / Validation
+
+- Ran Python syntax check:
+  - `python -B -m py_compile app\main.py`
+- Ran CSS brace-balance check:
+  - `python -B -c "from pathlib import Path; css=Path('app/static/style.css').read_text(encoding='utf-8'); print('css braces', css.count('{'), css.count('}')); assert css.count('{') == css.count('}')"`
+- Started local rendered QA server:
+  - `.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010`
+- Checked health endpoint:
+  - `GET http://127.0.0.1:8010/api/health`
+- Browser-rendered checks:
+  - Loaded `/setup?mode=before`.
+  - Confirmed no global header camera badge appears.
+  - Confirmed `Camera check`, subtitle, routine preview, readiness cards, and `Start session` render.
+  - Confirmed normal setup DOM does not show `Score:`, `FPS`, or `AUTO`.
+  - Confirmed the 1280x720 setup layout no longer overlaps after compacting option rows.
+  - Loaded `/setup?mode=after&body_focus=lower&duration=8` and confirmed selected values and lower-body routine preview.
+  - Clicked `Start session` and confirmed navigation to `/session?mode=after&body_focus=lower&duration=8`.
+
+### Errors Encountered
+
+- First rendered pass showed the routine preview overlapping the time controls at 1280x720. Fixed by changing setup options into compact segmented rows.
+
+### Known Limitations
+
+- Local rendered QA used the no-camera QR fallback state, so the active USB/phone preview masking should still be checked on the UNO Q with a real camera connected.
+- The setup page intentionally does not change the shared inference overlay; it hides that overlay only on the setup presentation surface.
+
+### Next Steps
+
+- Verify `/setup` on the UNO Q with USB camera active and confirm the setup preview displays `Setup preview only · No score yet`.
+- Verify phone QR fallback on the UNO Q monitor and phone.
