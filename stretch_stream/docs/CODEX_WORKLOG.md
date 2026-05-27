@@ -375,3 +375,39 @@ Polished the StretchSense kiosk UI to feel sharper, more professional, more attr
 
 - Verify `/setup` on the UNO Q with USB camera active and confirm the setup preview displays `Setup preview only · No score yet`.
 - Verify phone QR fallback on the UNO Q monitor and phone.
+
+## 2026-05-27 Setup Page Cleanup
+
+### Date / Time
+
+- 2026-05-27 evening, after setup redesign
+
+### Files Changed
+
+- `stretch_stream/app/templates/setup.html`
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### What Changed
+
+- Removed the top-left `StretchSense` branding/header from `/setup`.
+- Removed the routine preview section from the setup panel.
+- Removed the top-right `USB camera ready` / `Phone camera ready` / `Scan phone QR` badge from the camera check header.
+- Kept only one camera status area in setup: the readiness cards under the camera preview/QR.
+- Increased the setup submit button height and text size.
+- Changed the button text to `Start Session`.
+
+### Design Decisions
+
+- Kept the setup page quieter by removing duplicated status labels.
+- Kept the readiness cards because they group Camera, Position, and Phone QR status in one consistent place.
+- Did not modify camera source logic, phone streaming logic, or inference logic.
+
+### Validation
+
+- Shell/browser validation could not be rerun in this pass because the local command approval/usage limit was reached.
+- Changes were limited to template/CSS cleanup and this work log entry.
+
+### Known Limitations
+
+- Recheck `/setup` on the UNO Q monitor to confirm the larger `Start Session` button and single camera status area feel right with the real USB camera feed.

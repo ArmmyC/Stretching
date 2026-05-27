@@ -272,7 +272,7 @@ h1 {
   display: grid;
   grid-template-columns: minmax(390px, 0.88fr) minmax(450px, 1.12fr);
   gap: 16px;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 36px);
   min-height: 0;
 }
 
@@ -298,8 +298,9 @@ h1 {
 
 .setup-panel {
   display: grid;
-  grid-template-rows: auto auto auto auto;
-  gap: 11px;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+  gap: 18px;
 }
 
 .setup-intro {
@@ -379,7 +380,13 @@ input[type="radio"] {
 
 .primary-action {
   width: 100%;
-  min-height: 58px;
+  min-height: 84px;
+}
+
+.setup-panel .primary-action {
+  font: inherit;
+  font-size: 34px;
+  font-weight: 760;
 }
 
 .camera-setup {
@@ -395,8 +402,6 @@ input[type="radio"] {
 .camera-check-header {
   display: flex;
   align-items: start;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .camera-check-header h2 {
@@ -411,27 +416,6 @@ input[type="radio"] {
   color: var(--muted);
   font-size: 20px;
   line-height: 1.2;
-}
-
-.panel-badge {
-  flex: 0 0 auto;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(79, 104, 113, 0.78);
-  background: rgba(5, 9, 11, 0.58);
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 760;
-}
-
-.panel-badge.ok {
-  border-color: rgba(180, 255, 24, 0.45);
-  color: var(--accent);
-}
-
-.panel-badge.wait {
-  border-color: rgba(255, 209, 102, 0.5);
-  color: var(--warning);
 }
 
 .setup-preview-frame,
@@ -508,40 +492,6 @@ input[type="radio"] {
   color: var(--muted) !important;
   font-size: 16px !important;
   font-weight: 500 !important;
-}
-
-.routine-preview {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid rgba(79, 104, 113, 0.58);
-  border-radius: var(--radius);
-  background: rgba(5, 9, 11, 0.32);
-}
-
-.routine-preview h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: 20px;
-}
-
-.routine-preview ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.routine-preview li {
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(37, 217, 230, 0.26);
-  background: rgba(20, 35, 42, 0.78);
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 650;
 }
 
 .readiness-grid {

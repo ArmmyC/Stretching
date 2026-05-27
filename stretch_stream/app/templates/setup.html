@@ -8,10 +8,6 @@
 </head>
 <body class="page setup-page">
   <main class="setup-shell">
-    <header class="top-bar">
-      <a class="back-link" href="/">StretchSense</a>
-    </header>
-
     <form class="setup-grid" action="/session" method="get">
       <section class="setup-panel">
         <div class="setup-intro">
@@ -41,16 +37,7 @@
           </fieldset>
         </div>
 
-        <section class="routine-preview" aria-label="Routine preview">
-          <h2>Routine preview</h2>
-          <ol>
-            {% for stretch in status.session.routine %}
-              <li>{{ stretch }}</li>
-            {% endfor %}
-          </ol>
-        </section>
-
-        <button class="primary-action" type="submit">Start session</button>
+        <button class="primary-action" type="submit">Start Session</button>
       </section>
 
       <aside class="camera-setup">
@@ -59,13 +46,6 @@
             <h2>Camera check</h2>
             <p>Stand where your full body is visible before starting.</p>
           </div>
-          {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
-            <span class="panel-badge ok">USB camera ready</span>
-          {% elif status.camera.phone_connected %}
-            <span class="panel-badge ok">Phone camera ready</span>
-          {% else %}
-            <span class="panel-badge wait">Scan phone QR</span>
-          {% endif %}
         </header>
 
         {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
