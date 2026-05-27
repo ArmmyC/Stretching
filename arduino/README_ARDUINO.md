@@ -73,7 +73,7 @@ Strap the Nano firmly to the forearm so the board moves with the arm. Keep the o
 - `Arduino_Modulino` for Modulino Distance, Pixels, Buzzer, and Buttons. The sketch also checks for older `Modulino.h` examples.
 - An LCD library of your choice if `USE_LCD` is set to `1`; display functions are stubbed until a specific LCD is chosen.
 
-Arduino's current Modulino library documentation shows `#include <Arduino_Modulino.h>`, `Modulino.begin()`, `ModulinoDistance`, `ModulinoPixels`, `ModulinoBuzzer`, and `ModulinoButtons`.
+Arduino's current Modulino library documentation shows `#include <Arduino_Modulino.h>`, `Modulino.begin()`, `ModulinoDistance`, `ModulinoPixels`, `ModulinoBuzzer`, and `ModulinoButtons`: https://docs.arduino.cc/libraries/arduino_modulino
 
 ## Test Nano Alone
 

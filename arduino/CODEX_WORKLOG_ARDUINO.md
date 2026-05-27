@@ -2,7 +2,7 @@
 
 ## Date/Time
 
-- 2026-05-27, Asia/Bangkok workspace context.
+- 2026-05-27 20:44:48 +07:00, Asia/Bangkok workspace context.
 
 ## Files Created
 
@@ -69,8 +69,10 @@ UNO Q:
 
 - Created firmware and documentation files in the workspace.
 - Reviewed sketches for missing semicolons, obvious malformed conditionals, and stale-data logic.
+- Ran a local static file sanity check for balanced braces, parentheses, and brackets after stripping comments and strings.
 - Added fallback JSON parsing so UNO Q can still accept simple messages when `ArduinoJson` is not installed.
 - Added automatic mock distance when the Modulino library is absent, enabling manual Serial Monitor testing without sensors.
+- Checked for `arduino-cli`; it is not installed in this workspace.
 
 ## Commands Run
 
@@ -81,6 +83,7 @@ UNO Q:
 ## Could Not Compile Here
 
 - Actual Arduino compilation was not run in this environment because board cores and hardware libraries are not installed in the workspace.
+- `arduino-cli` was not available on PATH.
 - Modulino hardware behavior must be verified on the actual UNO Q with the installed `Arduino_Modulino` library.
 - IMU backend must be selected against the exact Nano 33 BLE Sense Lite variant.
 
