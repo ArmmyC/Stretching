@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.venv/
+debug_frames/
+logs/*.log
+certs/*.pem
