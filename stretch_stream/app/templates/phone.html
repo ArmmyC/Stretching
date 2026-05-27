@@ -2,20 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StretchSense Phone Camera</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Phone Camera - StretchSense</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="page phone-page">
+<body>
   <main class="phone-shell">
-    <h1>Phone Camera Connected</h1>
-    <p id="status">Requesting camera...</p>
-    <video id="preview" autoplay playsinline muted></video>
-    <p class="phone-command">Place your phone facing your body</p>
-    <p class="phone-note">Keep this screen open</p>
-    <button id="restart" type="button">Restart Camera</button>
-    <canvas id="canvas" width="640" height="480"></canvas>
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-name">Stretch<span class="dot">.</span>Sense</div>
+    </div>
+
+    <section class="phone-card">
+      <span class="badge info phone-status-badge">
+        <span class="pulse"></span>
+        <span id="status">Requesting camera...</span>
+      </span>
+      <h1>Phone Camera Connected</h1>
+      <p>Place your phone facing your body.<br>Keep this screen open.</p>
+
+      <div class="phone-preview">
+        <video id="preview" autoplay playsinline muted></video>
+      </div>
+
+      <button class="btn btn-primary" id="restart" type="button">Restart Camera</button>
+      <p class="phone-helper">The big screen at the station is your main view. This phone just sends video.</p>
+      <canvas id="canvas" width="640" height="480"></canvas>
+    </section>
   </main>
+
   <script>
     const targetFps = {{ target_fps }};
     const jpegQuality = {{ jpeg_quality }};
@@ -31,7 +46,7 @@
 
     function setStatus(text, ok = true) {
       statusEl.textContent = text;
-      statusEl.className = ok ? "ok" : "bad";
+      statusEl.closest(".badge").className = ok ? "badge info phone-status-badge" : "badge warn phone-status-badge";
     }
 
     function socketUrl() {

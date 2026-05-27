@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Set your stretch — StretchSense</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="kiosk">
+    <header class="top-bar">
+      <a class="brand" href="/">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div class="brand-name">Stretch<span class="dot">.</span>Sense</div>
+      </a>
+      <span class="step-chip"><span class="dot"></span> Step 2 of 3 · Setup</span>
+    </header>
+
+    <section class="setup-grid">
+      <!-- LEFT: routine setup -->
+      <div class="panel" id="routine-panel">
+        <div>
+          <h2>Set your stretch</h2>
+          <p class="panel-sub">Choose a quick routine. The camera check stays on the right.</p>
+        </div>
+
+        <div>
+          <div class="group-label">Mode</div>
+          <div class="segmented accent-lime" data-group="mode">
+            <button type="button" data-value="before" class="active">Before workout</button>
+            <button type="button" data-value="after">After workout</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="group-label">Body focus</div>
+          <div class="segmented" data-group="focus">
+            <button type="button" data-value="upper">Upper body</button>
+            <button type="button" data-value="lower">Lower body</button>
+            <button type="button" data-value="full" class="active">Full body</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="group-label">Duration</div>
+          <div class="segmented accent-cyan" data-group="duration">
+            <button type="button" data-value="3">3 min</button>
+            <button type="button" data-value="5" class="active">5 min</button>
+            <button type="button" data-value="8">8 min</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="group-label">Routine preview</div>
+          <div class="routine-preview">
+            <div class="rp-head">
+              <span id="rp-title">Your routine</span>
+              <span id="rp-meta">5 min · Full body</span>
+            </div>
+            <ol id="routine-list">
+              <li><span class="num">1</span> Shoulder stretch</li>
+              <li><span class="num">2</span> Hip opener</li>
+              <li><span class="num">3</span> Hamstring stretch</li>
+            </ol>
+          </div>
+        </div>
+
+        <form method="post" action="/api/session/config" id="config-form" style="margin: 0;">
+          <input type="hidden" name="mode" id="f-mode" value="before" />
+          <input type="hidden" name="focus" id="f-focus" value="full" />
+          <input type="hidden" name="duration" id="f-duration" value="5" />
+          <button type="submit" class="btn btn-primary btn-xl" id="start-btn" style="width: 100%;">
+            Start session →
+          </button>
+        </form>
+      </div>
+
+      <!-- RIGHT: camera check -->
+      <div class="panel" id="camera-panel">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+          <div>
+            <h2>Camera check</h2>
+            <p class="panel-sub">Stand where your full body is visible before starting.</p>
+          </div>
+          <span class="badge ok" id="cam-badge"><span class="pulse"></span><span id="cam-badge-text">USB camera ready</span></span>
+        </div>
+
+        <div class="camera-frame" id="camera-frame">
+          <!-- Backend hook: <img class="stream" src="/video_feed" alt="Camera preview" /> -->
+          <img class="stream" id="cam-stream" src="/video_feed" alt="Camera preview"
+               onerror="this.style.display='none'; document.getElementById('cam-fallback').style.display='flex';" />
+          <div class="camera-placeholder" id="cam-fallback" style="display:none;">
+            <div class="ring">◯</div>
+            <div>Waiting for camera feed…</div>
+          </div>
+          <div class="camera-corner tl"></div>
+          <div class="camera-corner tr"></div>
+          <div class="camera-corner bl"></div>
+          <div class="camera-corner br"></div>
+          <div class="camera-overlay"></div>
+          <div class="camera-caption">Setup preview only · No score yet</div>
+        </div>
+
+        <div class="readiness">
+          <div class="r-card ok" id="r-camera">
+            <div class="r-label">Camera</div>
+            <div class="r-value">USB active</div>
+          </div>
+          <div class="r-card" id="r-position">
+            <div class="r-label">Position</div>
+            <div class="r-value">Move into frame</div>
+          </div>
+          <div class="r-card" id="r-qr">
+            <div class="r-label">Phone QR</div>
+            <div class="r-value">Hidden in USB mode</div>
+          </div>
+        </div>
+
+        <div class="qr-area" id="qr-area">
+          <div class="qr-img"><img src="/qr.png" alt="Scan to connect your phone camera" /></div>
+          <div class="qr-text">
+            <h4>Scan to use your phone camera</h4>
+            <p>Open your phone camera and point it at this code. Keep your phone facing your body.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ---- Routine catalog (UI-only preview) ----
+    const ROUTINES = {
+      before: ["Arm circles", "Hip opener", "Hamstring sweep"],
+      after:  ["Shoulder stretch", "Quad stretch", "Hamstring stretch"],
+      upper:  ["Shoulder stretch", "Chest opener", "Triceps stretch"],
+      lower:  ["Quad stretch", "Hamstring stretch", "Calf stretch"],
+      full:   ["Shoulder stretch", "Hip opener", "Hamstring stretch"],
+    };
+    const state = { mode: "before", focus: "full", duration: "5" };
+
+    function renderRoutine() {
+      // Compose from mode + focus
+      const seq = [];
+      const seen = new Set();
+      [...(ROUTINES[state.mode] || []), ...(ROUTINES[state.focus] || [])].forEach(s => {
+        if (!seen.has(s)) { seen.add(s); seq.push(s); }
+      });
+      const list = document.getElementById("routine-list");
+      list.innerHTML = seq.slice(0, 5).map((s, i) =>
+        `<li><span class="num">${i+1}</span> ${s}</li>`
+      ).join("");
+      const focusLabel = { upper: "Upper body", lower: "Lower body", full: "Full body" }[state.focus];
+      document.getElementById("rp-meta").textContent = `${state.duration} min · ${focusLabel}`;
+      document.getElementById("rp-title").textContent = state.mode === "before" ? "Warm-up routine" : "Cool-down routine";
+      // Sync hidden inputs for backend
+      document.getElementById("f-mode").value = state.mode;
+      document.getElementById("f-focus").value = state.focus;
+      document.getElementById("f-duration").value = state.duration;
+    }
+
+    document.querySelectorAll(".segmented").forEach(seg => {
+      seg.addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        seg.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state[seg.dataset.group] = btn.dataset.value;
+        renderRoutine();
+      });
+    });
+
+    // Prefill from ?mode=
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("mode") === "after") {
+      state.mode = "after";
+      document.querySelector('[data-group="mode"] [data-value="before"]').classList.remove("active");
+      document.querySelector('[data-group="mode"] [data-value="after"]').classList.add("active");
+    }
+    renderRoutine();
+
+    // ---- Camera status (UI placeholder; replace with /api/status polling) ----
+    // Possible states: 'usb' | 'phone' | 'waiting' | 'none'
+    function applyCameraState(s) {
+      const badge = document.getElementById("cam-badge");
+      const text = document.getElementById("cam-badge-text");
+      const rCam = document.getElementById("r-camera");
+      const rQr = document.getElementById("r-qr");
+      const qr = document.getElementById("qr-area");
+
+      badge.className = "badge";
+      rCam.className = "r-card";
+      rQr.className = "r-card";
+
+      if (s === "usb") {
+        badge.classList.add("ok"); text.textContent = "USB camera ready";
+        rCam.classList.add("ok"); rCam.querySelector(".r-value").textContent = "USB active";
+        rQr.querySelector(".r-value").textContent = "Hidden in USB mode";
+        qr.classList.remove("visible");
+      } else if (s === "phone") {
+        badge.classList.add("info"); text.textContent = "Phone camera active";
+        rCam.classList.add("info"); rCam.querySelector(".r-value").textContent = "Phone active";
+        rQr.querySelector(".r-value").textContent = "Connected";
+        qr.classList.remove("visible");
+      } else if (s === "waiting") {
+        badge.classList.add("warn"); text.textContent = "Waiting for phone camera";
+        rCam.classList.add("warn"); rCam.querySelector(".r-value").textContent = "Waiting";
+        rQr.querySelector(".r-value").textContent = "Scan needed";
+        qr.classList.add("visible");
+      } else {
+        badge.classList.add("bad"); text.textContent = "No camera";
+        rCam.querySelector(".r-value").textContent = "No camera";
+        rQr.querySelector(".r-value").textContent = "Scan needed";
+        qr.classList.add("visible");
+      }
+    }
+
+    // Poll backend status (safe no-op if endpoint missing)
+    async function pollStatus() {
+      try {
+        const r = await fetch("/api/status", { cache: "no-store" });
+        if (!r.ok) return;
+        const data = await r.json();
+        // expected: { camera: 'usb'|'phone'|'waiting'|'none', position_ok: bool }
+        if (data.camera) applyCameraState(data.camera);
+        const pos = document.getElementById("r-position");
+        if (data.position_ok) {
+          pos.classList.add("ok");
+          pos.querySelector(".r-value").textContent = "Full body visible";
+        }
+      } catch (e) { /* offline ok */ }
+    }
+    pollStatus();
+    setInterval(pollStatus, 1500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Session — StretchSense</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="session-shell">
+    <!-- LEFT: camera-first stage -->
+    <section class="session-stage">
+      <div class="stage-top">
+        <div class="left">
+          <a class="brand" href="/" title="Exit session">
+            <div class="brand-mark" aria-hidden="true"></div>
+            <div class="brand-name">Stretch<span class="dot">.</span>Sense</div>
+          </a>
+          <span class="badge ok" id="cam-source-badge"><span class="pulse"></span><span id="cam-source-text">USB Camera</span></span>
+        </div>
+        <div class="state-pill" id="state-pill" data-state="READY">
+          <span id="state-text">READY</span>
+        </div>
+      </div>
+
+      <div class="stream-wrap">
+        <img class="stream" id="cam-stream" src="/video_feed" alt="Live camera"
+             onerror="this.style.display='none'; document.getElementById('cam-fallback').style.display='flex';" />
+        <div class="camera-placeholder" id="cam-fallback" style="display:none;">
+          <div class="ring">◯</div>
+          <div>Waiting for camera feed…</div>
+        </div>
+      </div>
+
+      <div class="stage-bottom">
+        <div class="stretch-info">
+          <div class="stretch-step" id="stretch-step">Stretch 1 of 3</div>
+          <h1 class="stretch-name" id="stretch-name">Shoulder Stretch</h1>
+          <p class="stretch-instruction" id="instruction">Raise arm. Hold the stretch.</p>
+        </div>
+        <div class="timer-block">
+          <div class="timer" id="timer">00:25</div>
+          <div class="timer-label">Hold time</div>
+        </div>
+      </div>
+
+      <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+    </section>
+
+    <!-- RIGHT: rail -->
+    <aside class="session-side">
+      <div class="side-card">
+        <h3>Session</h3>
+        <div class="meta-row"><span class="k">Mode</span><span class="v" id="meta-mode">Before workout</span></div>
+        <div class="meta-row"><span class="k">Body focus</span><span class="v" id="meta-focus">Full body</span></div>
+        <div class="meta-row"><span class="k">Duration</span><span class="v" id="meta-duration">5 min</span></div>
+      </div>
+
+      <div class="side-card">
+        <h3>Form feedback</h3>
+        <div class="score-stack">
+          <div>
+            <div class="meta-row"><span class="k">Score</span><span class="v" id="score-label">Good</span></div>
+            <div class="score-big" id="score-value">82</div>
+          </div>
+          <div>
+            <div class="meta-row"><span class="k">Stability</span><span class="v" id="stability-pct">74%</span></div>
+            <div class="bar"><span id="stability-bar" style="width:74%"></span></div>
+          </div>
+          <div>
+            <div class="meta-row"><span class="k">Stretch progress</span><span class="v" id="progress-pct">34%</span></div>
+            <div class="bar"><span id="progress-bar-side" style="width:34%"></span></div>
+          </div>
+          <p style="margin:0; font-size:12px; color:var(--text-mute);">
+            Movement guidance only. Awareness and form cues — not medical advice.
+          </p>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <h3>Controls</h3>
+        <div class="controls">
+          <button class="btn btn-primary full" data-action="start">▶ Start</button>
+          <button class="btn" data-action="pause">❚❚ Pause</button>
+          <button class="btn" data-action="next">⏭ Next</button>
+          <button class="btn btn-ghost full" data-action="reset">↺ Reset</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Debug panel (only when ?debug=1) -->
+  <section class="debug-panel" id="debug-panel">
+    <h4>Debug · Judge mode <span style="color:var(--text-mute); font-family:var(--mono);" id="debug-time">--:--:--</span></h4>
+    <div class="row"><span>Camera source</span><span id="d-cam-source">usb</span></div>
+    <div class="row"><span>USB detected</span><span id="d-usb">true</span></div>
+    <div class="row"><span>Phone connected</span><span id="d-phone">false</span></div>
+    <div class="row"><span>FPS</span><span id="d-fps">30</span></div>
+    <div class="row"><span>Frame size</span><span id="d-size">1280×720</span></div>
+    <div class="row"><span>Last frame</span><span id="d-frame-ts">—</span></div>
+    <div class="row"><span>Session state</span><span id="d-state">READY</span></div>
+    <div class="row"><span>Elapsed</span><span id="d-elapsed">0s</span></div>
+    <div class="row"><span>Mode</span><span id="d-mode">before</span></div>
+    <div class="row"><span>Focus</span><span id="d-focus">full</span></div>
+    <div class="row"><span>Duration</span><span id="d-duration">5</span></div>
+    <div class="row"><span>Forced cam</span><span id="d-forced">—</span></div>
+    <div class="row"><span>Local URL</span><span id="d-url">—</span></div>
+  </section>
+
+  <script src="/static/session.js"></script>
+</body>
+</html>

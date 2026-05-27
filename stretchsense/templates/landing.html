@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StretchSense - Quick Stretching Guidance</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StretchSense — Quick Stretching Guidance</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <main class="kiosk landing-kiosk">
+  <main class="kiosk">
     <header class="top-bar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"></div>
@@ -16,29 +16,31 @@
       <div class="top-meta">Local gym station</div>
     </header>
 
-    <section class="hero" aria-labelledby="landing-title">
-      <h1 id="landing-title">StretchSense</h1>
+    <section class="hero">
+      <h1>StretchSense</h1>
       <p class="sub">Quick stretching guidance before and after your workout.</p>
 
       <div class="question">What are you doing today?</div>
 
-      <div class="choice-grid" aria-label="Choose session mode">
+      <div class="choice-grid">
         <a class="choice-card before" href="/setup?mode=before" data-mode="before">
-          <div class="icon">&uarr;</div>
+          <div class="icon">↑</div>
           <h2>Before Workout</h2>
           <p>Warm up your body before training.</p>
-          <div class="meta">3 to 5 min routine</div>
-          <div class="arrow" aria-hidden="true">&rsaquo;</div>
+          <div class="meta">3 – 5 min routine</div>
+          <div class="arrow" aria-hidden="true">›</div>
         </a>
         <a class="choice-card after" href="/setup?mode=after" data-mode="after">
-          <div class="icon">&darr;</div>
+          <div class="icon">↓</div>
           <h2>After Workout</h2>
           <p>Cool down after your workout.</p>
-          <div class="meta">3 to 8 min routine</div>
-          <div class="arrow" aria-hidden="true">&rsaquo;</div>
+          <div class="meta">3 – 8 min routine</div>
+          <div class="arrow" aria-hidden="true">›</div>
         </a>
       </div>
     </section>
+
+    <footer class="foot">Local gym station · No account needed</footer>
   </main>
 </body>
 </html>

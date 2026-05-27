@@ -3,99 +3,149 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StretchSense Setup</title>
+  <title>Set your stretch - StretchSense</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="page setup-page">
-  <main class="setup-shell">
-    <form class="setup-grid" action="/session" method="get">
-      <section class="setup-panel">
-        <div class="setup-intro">
-          <h1>Set your stretch</h1>
-          <p>Choose a quick routine. The camera check stays on the right.</p>
+<body>
+  <main class="kiosk setup-kiosk">
+    <section class="setup-grid">
+      <form class="panel setup-panel" id="config-form" action="/session" method="get">
+        <div>
+          <h2>Set your stretch</h2>
+          <p class="panel-sub">Choose a quick routine. The camera check stays on the right.</p>
         </div>
 
-        <div class="setup-options">
-          <fieldset class="option-mode">
-            <legend>Mode</legend>
-            <label><input type="radio" name="mode" value="before" {% if status.session.mode == 'before' %}checked{% endif %}> Before workout</label>
-            <label><input type="radio" name="mode" value="after" {% if status.session.mode == 'after' %}checked{% endif %}> After workout</label>
-          </fieldset>
-
-          <fieldset class="option-focus">
-            <legend>Body focus</legend>
-            <label><input type="radio" name="body_focus" value="upper" {% if status.session.body_focus == 'upper' %}checked{% endif %}> Upper body</label>
-            <label><input type="radio" name="body_focus" value="lower" {% if status.session.body_focus == 'lower' %}checked{% endif %}> Lower body</label>
-            <label><input type="radio" name="body_focus" value="full" {% if status.session.body_focus == 'full' %}checked{% endif %}> Full body</label>
-          </fieldset>
-
-          <fieldset class="option-time">
-            <legend>Time</legend>
-            <label><input type="radio" name="duration" value="3" {% if status.session.duration == 3 %}checked{% endif %}> 3 min</label>
-            <label><input type="radio" name="duration" value="5" {% if status.session.duration == 5 %}checked{% endif %}> 5 min</label>
-            <label><input type="radio" name="duration" value="8" {% if status.session.duration == 8 %}checked{% endif %}> 8 min</label>
-          </fieldset>
+        <div>
+          <div class="group-label">Mode</div>
+          <div class="segmented accent-lime" data-group="mode">
+            <button type="button" data-value="before" class="{{ 'active' if status.session.mode == 'before' else '' }}">Before workout</button>
+            <button type="button" data-value="after" class="{{ 'active' if status.session.mode == 'after' else '' }}">After workout</button>
+          </div>
         </div>
 
-        <button class="primary-action" type="submit">Start Session</button>
-      </section>
+        <div>
+          <div class="group-label">Body focus</div>
+          <div class="segmented" data-group="body_focus">
+            <button type="button" data-value="upper" class="{{ 'active' if status.session.body_focus == 'upper' else '' }}">Upper body</button>
+            <button type="button" data-value="lower" class="{{ 'active' if status.session.body_focus == 'lower' else '' }}">Lower body</button>
+            <button type="button" data-value="full" class="{{ 'active' if status.session.body_focus == 'full' else '' }}">Full body</button>
+          </div>
+        </div>
 
-      <aside class="camera-setup">
-        <header class="camera-check-header">
+        <div>
+          <div class="group-label">Duration</div>
+          <div class="segmented accent-cyan" data-group="duration">
+            <button type="button" data-value="3" class="{{ 'active' if status.session.duration == 3 else '' }}">3 min</button>
+            <button type="button" data-value="5" class="{{ 'active' if status.session.duration == 5 else '' }}">5 min</button>
+            <button type="button" data-value="8" class="{{ 'active' if status.session.duration == 8 else '' }}">8 min</button>
+          </div>
+        </div>
+
+        <input type="hidden" name="mode" id="f-mode" value="{{ status.session.mode }}">
+        <input type="hidden" name="body_focus" id="f-body-focus" value="{{ status.session.body_focus }}">
+        <input type="hidden" name="duration" id="f-duration" value="{{ status.session.duration }}">
+
+        <button type="submit" class="btn btn-primary btn-xl start-session-btn">
+          Start Session &rarr;
+        </button>
+      </form>
+
+      <aside class="panel camera-check-panel">
+        <div class="camera-check-head">
           <div>
             <h2>Camera check</h2>
-            <p>Stand where your full body is visible before starting.</p>
+            <p class="panel-sub">Stand where your full body is visible before starting.</p>
           </div>
-        </header>
+        </div>
 
-        {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
-          <div class="setup-preview-frame">
-            <img class="setup-preview" src="/video_feed" alt="USB camera preview">
-            <div class="setup-preview-cleaner" aria-hidden="true"></div>
-            <div class="setup-preview-note">Setup preview only &middot; No score yet</div>
-          </div>
-        {% elif status.camera.phone_connected %}
-          <div class="setup-preview-frame">
-            <img class="setup-preview" src="/video_feed" alt="Phone camera preview">
-            <div class="setup-preview-cleaner" aria-hidden="true"></div>
-            <div class="setup-preview-note">Setup preview only &middot; No score yet</div>
+        {% if (status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected) or status.camera.phone_connected %}
+          <div class="camera-frame setup-camera-frame">
+            <img class="stream" id="cam-stream" src="/video_feed" alt="Camera preview"
+                 onerror="this.style.display='none'; document.getElementById('cam-fallback').style.display='flex';">
+            <div class="camera-placeholder" id="cam-fallback" style="display:none;">
+              <div class="ring">O</div>
+              <div>Waiting for camera feed...</div>
+            </div>
+            <div class="camera-corner tl"></div>
+            <div class="camera-corner tr"></div>
+            <div class="camera-corner bl"></div>
+            <div class="camera-corner br"></div>
+            <div class="setup-feed-mask" aria-hidden="true"></div>
+            <div class="camera-overlay"></div>
+            <div class="camera-caption">Setup preview only &middot; No score yet</div>
           </div>
         {% else %}
-          <div class="setup-qr-block">
-            <img class="qr" src="/qr.png" alt="Phone camera QR code">
-            <p>Scan QR to use your phone camera.</p>
-            <p class="url">{{ phone_url }}</p>
+          <div class="qr-panel">
+            <div class="qr-img"><img src="/qr.png" alt="Scan to connect your phone camera"></div>
+            <div class="qr-text">
+              <h3>Scan QR to use your phone camera</h3>
+              <p>Open your phone camera and point it at this code. Keep your phone facing your body.</p>
+              <p class="qr-url">{{ phone_url }}</p>
+            </div>
           </div>
         {% endif %}
 
-        <section class="readiness-grid" aria-label="Readiness checklist">
-          <div class="readiness-card">
-            <span>Camera</span>
+        <section class="readiness" aria-label="Readiness checklist">
+          <div class="r-card {{ 'ok' if status.camera.camera_state == 'ACTIVE' else 'warn' }}">
+            <div class="r-label">Camera</div>
             {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
-              <strong>USB active</strong>
+              <div class="r-value">USB active</div>
             {% elif status.camera.phone_connected %}
-              <strong>Phone active</strong>
+              <div class="r-value">Phone active</div>
             {% else %}
-              <strong>Waiting</strong>
+              <div class="r-value">Waiting</div>
             {% endif %}
           </div>
-          <div class="readiness-card">
-            <span>Position</span>
-            <strong>Full body visible</strong>
+          <div class="r-card">
+            <div class="r-label">Position</div>
+            <div class="r-value">Full body visible</div>
           </div>
-          <div class="readiness-card">
-            <span>Phone QR</span>
+          <div class="r-card {{ 'ok' if status.camera.phone_connected else '' }}">
+            <div class="r-label">Phone QR</div>
             {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
-              <strong>Hidden in USB mode</strong>
+              <div class="r-value">Hidden in USB mode</div>
             {% elif status.camera.phone_connected %}
-              <strong>Phone connected</strong>
+              <div class="r-value">Connected</div>
             {% else %}
-              <strong>Scan needed</strong>
+              <div class="r-value">Scan needed</div>
             {% endif %}
           </div>
         </section>
       </aside>
-    </form>
+    </section>
   </main>
+
+  <script>
+    const setupState = {
+      mode: "{{ status.session.mode }}",
+      body_focus: "{{ status.session.body_focus }}",
+      duration: "{{ status.session.duration }}",
+    };
+
+    const hiddenInputs = {
+      mode: document.getElementById("f-mode"),
+      body_focus: document.getElementById("f-body-focus"),
+      duration: document.getElementById("f-duration"),
+    };
+
+    function syncSetupInputs() {
+      hiddenInputs.mode.value = setupState.mode;
+      hiddenInputs.body_focus.value = setupState.body_focus;
+      hiddenInputs.duration.value = setupState.duration;
+    }
+
+    document.querySelectorAll(".segmented").forEach((segmented) => {
+      segmented.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        segmented.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        setupState[segmented.dataset.group] = button.dataset.value;
+        syncSetupInputs();
+      });
+    });
+
+    syncSetupInputs();
+  </script>
 </body>
 </html>

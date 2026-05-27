@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Phone Camera — StretchSense</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="phone-shell">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-name">Stretch<span class="dot">.</span>Sense</div>
+    </div>
+
+    <section class="phone-card">
+      <span class="badge info" style="align-self:center;">
+        <span class="pulse"></span><span id="phone-status-text">Phone Camera Connected</span>
+      </span>
+      <h1>Phone Camera Connected</h1>
+      <p>Place your phone facing your body.<br/>Keep this screen open.</p>
+
+      <div class="phone-preview">
+        <!-- Backend hook: phone-side camera stream goes here -->
+        <img id="phone-stream" src="/video_feed?source=phone" alt="Phone camera preview"
+             onerror="this.style.display='none'; document.getElementById('phone-fallback').style.display='flex';" />
+        <div class="camera-placeholder" id="phone-fallback" style="display:none;">
+          <div class="ring">◯</div>
+          <div>Connecting to station…</div>
+        </div>
+      </div>
+
+      <p style="font-size:13px; color:var(--text-mute);">
+        The big screen at the station is your main view. This phone just sends video.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
