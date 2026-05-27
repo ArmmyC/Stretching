@@ -7,23 +7,31 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="page landing-page">
-  <main class="landing-shell">
-    <section class="brand-block">
+  <main class="landing-shell" aria-labelledby="landing-title">
+    <section class="landing-hero">
       <div class="brand-mark">SS</div>
-      <h1>StretchSense</h1>
+      <h1 id="landing-title">StretchSense</h1>
       <p>Quick stretching guidance before and after your workout.</p>
     </section>
 
-    <section class="landing-actions" aria-label="Choose session mode">
-      <a class="mode-button before" href="/setup?mode=before">Before Workout</a>
-      <a class="mode-button after" href="/setup?mode=after">After Workout</a>
+    <section class="landing-choice" aria-label="Choose session type">
+      <h2>What are you doing today?</h2>
+
+      <div class="landing-actions">
+        <a class="mode-card before" href="/setup?mode=before">
+          <span class="card-title">Before Workout</span>
+          <span class="card-desc">Warm up your body before training.</span>
+          <span class="card-meta">3 to 5 min routine</span>
+        </a>
+        <a class="mode-card after" href="/setup?mode=after">
+          <span class="card-title">After Workout</span>
+          <span class="card-desc">Cool down after your workout.</span>
+          <span class="card-meta">3 to 8 min routine</span>
+        </a>
+      </div>
     </section>
 
-    <section class="status-strip" aria-label="Station status">
-      <span>{{ status.camera.source_label }}</span>
-      <span>{{ "%.1f"|format(status.camera.fps or 0.0) }} FPS</span>
-      <span>{{ status.camera.force_camera_mode|upper }}</span>
-    </section>
+    <footer class="landing-footer">Local gym station &middot; No account needed</footer>
   </main>
 </body>
 </html>

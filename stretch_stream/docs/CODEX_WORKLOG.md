@@ -202,3 +202,63 @@ Polished the StretchSense kiosk UI to feel sharper, more professional, more attr
 
 - Local rendered QA used the no-camera Windows environment, so it verified the `PHONE_QR` waiting state rather than real USB video.
 - Final camera validation should still be performed on the UNO Q with USB and phone camera inputs.
+
+## 2026-05-27 Landing Page Redesign
+
+### Date / Time
+
+- 2026-05-27 18:33:41 +07:00
+
+### Files Changed
+
+- `stretch_stream/app/templates/landing.html`
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### What Changed
+
+- Rebuilt `/` as a premium kiosk landing page for StretchSense.
+- Added the required title, subtitle, main question, two large session cards, descriptions, routine duration meta text, and small local-station footer.
+- Removed the landing camera chips for camera source, FPS, and forced camera mode.
+- Kept camera status behavior scoped to setup/session pages by leaving camera source, phone streaming, and inference logic untouched.
+- Split landing card styling from `.primary-action` so setup/session buttons are not forced into landing-card proportions.
+
+### Design Decisions
+
+- Used a dark gym-tech background with subtle lime/cyan glow and high contrast for monitor readability.
+- Made the two choices large card-style links instead of normal web buttons.
+- Kept the first screen short and direct so it works as a kiosk entry point from 2 to 4 meters away.
+- Kept all styling local in `app/static/style.css`; no CDN, external font, or external asset was added.
+
+### Commands / Validation
+
+- Ran Python syntax check:
+  - `python -B -m py_compile app\main.py`
+- Ran CSS brace-balance check:
+  - `python -B -c "from pathlib import Path; css=Path('app/static/style.css').read_text(encoding='utf-8'); print('css braces', css.count('{'), css.count('}')); assert css.count('{') == css.count('}')"`
+- Started local rendered QA server:
+  - `.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010`
+- Checked health endpoint:
+  - `GET http://127.0.0.1:8010/api/health`
+- Browser-rendered checks:
+  - Loaded `GET /`
+  - Confirmed `/` contains StretchSense, subtitle, question, both cards, and footer.
+  - Confirmed `/` does not show `USB Camera`, `FPS`, `AUTO`, `PHONE_QR`, or `Waiting for Phone`.
+  - Clicked the `Before Workout` card and confirmed navigation to `/setup?mode=before`.
+  - Confirmed setup still shows camera status and QR/camera pairing area.
+
+### Errors Encountered
+
+- Browser console history still contained stale `session.js` fetch errors from an earlier session page check. The landing route itself does not load `session.js`, and the rendered landing DOM did not include the removed camera/debug chips.
+
+### Known Limitations
+
+- Rendered QA was performed in the local Windows workspace at 1280x720 with the no-camera phone fallback state available on setup.
+- Final visual verification should still be repeated on the UNO Q monitor.
+- Mobile layout remains supported, but the primary design target is a full-screen gym kiosk monitor.
+
+### Next Steps
+
+- Verify the same landing page on the UNO Q HDMI display.
+- Confirm card touch/click targets feel good at the actual kiosk distance.
+- Continue keeping camera diagnostics out of `/` and reserved for setup/session/debug surfaces.
