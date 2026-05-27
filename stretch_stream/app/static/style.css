@@ -1,14 +1,17 @@
 :root {
-  --bg: #071014;
-  --panel: #111c22;
-  --panel-2: #18262d;
-  --text: #f5fbff;
-  --muted: #a9bac3;
-  --line: #2c3e47;
-  --accent: #8df521;
-  --accent-2: #30d5c8;
+  --bg: #05090b;
+  --panel: #0d1519;
+  --panel-2: #14232a;
+  --panel-3: #1a2d35;
+  --text: #f7fbff;
+  --muted: #9fb0b9;
+  --line: #31464f;
+  --line-bright: #4f6871;
+  --accent: #b4ff18;
+  --accent-2: #25d9e6;
   --warning: #ffd166;
-  --bad: #ff6b6b;
+  --bad: #ff725c;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
   --radius: 8px;
 }
 
@@ -32,12 +35,24 @@ a {
 }
 
 .page {
+  position: relative;
   height: 100vh;
   overflow: hidden;
   background:
-    linear-gradient(90deg, rgba(48, 213, 200, 0.07), transparent 38%),
-    radial-gradient(circle at 85% 20%, rgba(141, 245, 33, 0.08), transparent 28%),
+    linear-gradient(110deg, rgba(37, 217, 230, 0.1), transparent 34%),
+    radial-gradient(circle at 84% 15%, rgba(180, 255, 24, 0.12), transparent 24%),
     var(--bg);
+}
+
+.page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 26px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 80px);
+  opacity: 0.42;
 }
 
 .landing-shell {
@@ -61,9 +76,12 @@ a {
   height: 78px;
   display: grid;
   place-items: center;
-  border: 4px solid var(--accent);
-  border-radius: 50%;
+  border: 3px solid var(--accent);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(180, 255, 24, 0.16), rgba(37, 217, 230, 0.08));
+  box-shadow: 0 0 34px rgba(180, 255, 24, 0.18);
   color: var(--accent);
+  transform: skew(-9deg);
   font-size: 28px;
   font-weight: 900;
 }
@@ -73,6 +91,7 @@ h1 {
   font-size: clamp(54px, 8vw, 96px);
   line-height: 0.92;
   letter-spacing: 0;
+  text-shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
 }
 
 .brand-block p {
@@ -96,16 +115,27 @@ h1 {
   place-items: center;
   border: 0;
   border-radius: var(--radius);
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), #78e808);
   color: #071014;
   font-size: 32px;
   font-weight: 900;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: 0 16px 34px rgba(180, 255, 24, 0.18);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
 
 .mode-button.after {
-  background: var(--accent-2);
+  background: linear-gradient(135deg, var(--accent-2), #16b7ff);
+  box-shadow: 0 16px 34px rgba(37, 217, 230, 0.16);
+}
+
+.mode-button:hover,
+.primary-action:hover,
+.control-row button:hover,
+.phone-shell button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.07);
 }
 
 .status-strip {
@@ -123,7 +153,8 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 8px 14px;
-  background: rgba(17, 28, 34, 0.8);
+  background: rgba(13, 21, 25, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .setup-shell {
@@ -162,7 +193,7 @@ h1 {
 
 .setup-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 0.95fr) minmax(420px, 1.05fr);
+  grid-template-columns: minmax(390px, 0.95fr) minmax(390px, 1.05fr);
   gap: 16px;
   height: calc(100vh - 78px);
   min-height: 0;
@@ -172,9 +203,13 @@ h1 {
 .camera-setup,
 .coach-panel,
 .debug-panel {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(79, 104, 113, 0.74);
   border-radius: var(--radius);
-  background: rgba(17, 28, 34, 0.92);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 38%),
+    rgba(13, 21, 25, 0.94);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
 }
 
 .setup-panel,
@@ -208,13 +243,19 @@ label {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
+  min-height: 40px;
+  padding: 7px 12px;
+  border: 1px solid rgba(79, 104, 113, 0.76);
   border-radius: var(--radius);
-  background: var(--panel-2);
+  background: linear-gradient(180deg, var(--panel-2), #0f1c21);
   font-size: 22px;
   font-weight: 800;
+}
+
+label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(180, 255, 24, 0.18), 0 0 22px rgba(180, 255, 24, 0.08);
 }
 
 input[type="radio"] {
@@ -225,7 +266,7 @@ input[type="radio"] {
 
 .primary-action {
   width: 100%;
-  min-height: 72px;
+  min-height: 62px;
 }
 
 .camera-setup {
@@ -239,6 +280,7 @@ input[type="radio"] {
 .camera-setup h2 {
   margin: 0 0 10px;
   font-size: 32px;
+  color: var(--accent);
 }
 
 .camera-setup p {
@@ -253,6 +295,8 @@ input[type="radio"] {
   object-fit: contain;
   border-radius: var(--radius);
   background: #000;
+  border: 1px solid var(--line-bright);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .qr {
@@ -271,7 +315,7 @@ input[type="radio"] {
   height: 100vh;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(360px, 3fr);
+  grid-template-columns: minmax(0, 6.8fr) minmax(390px, 3.2fr);
   gap: 14px;
   padding: 14px;
 }
@@ -287,9 +331,19 @@ input[type="radio"] {
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-bright);
   border-radius: var(--radius);
   background: #020405;
+  box-shadow: var(--shadow);
+}
+
+.camera-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 -70px 90px rgba(0, 0, 0, 0.34);
 }
 
 .camera-frame img {
@@ -304,11 +358,12 @@ input[type="radio"] {
   bottom: 16px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(7, 16, 20, 0.82);
-  border: 1px solid var(--line);
+  background: rgba(5, 9, 11, 0.84);
+  border: 1px solid rgba(180, 255, 24, 0.55);
   color: var(--accent);
   font-size: 24px;
   font-weight: 900;
+  box-shadow: 0 0 22px rgba(180, 255, 24, 0.14);
 }
 
 .coach-panel {
@@ -316,8 +371,28 @@ input[type="radio"] {
   align-content: start;
   gap: 10px;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 16px;
+}
+
+.coach-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.mini-mark {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #051012;
+  transform: skew(-9deg);
 }
 
 .session-meta {
@@ -332,7 +407,8 @@ input[type="radio"] {
 .session-meta span {
   padding: 7px 10px;
   border-radius: 999px;
-  background: var(--panel-2);
+  border: 1px solid rgba(37, 217, 230, 0.26);
+  background: rgba(20, 35, 42, 0.72);
 }
 
 .timer {
@@ -341,12 +417,14 @@ input[type="radio"] {
   font-size: clamp(60px, 7vw, 84px);
   font-weight: 900;
   line-height: 0.95;
+  text-shadow: 0 0 30px rgba(180, 255, 24, 0.22);
 }
 
 #instruction {
   min-height: 78px;
   font-size: clamp(42px, 4.8vw, 62px);
   line-height: 0.98;
+  color: var(--accent);
 }
 
 #stretchName {
@@ -356,9 +434,16 @@ input[type="radio"] {
 }
 
 .state-label {
-  width: fit-content;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--accent-2);
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 900;
 }
 
@@ -382,19 +467,31 @@ input[type="radio"] {
 .debug-toggle,
 .phone-shell button {
   min-height: 50px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(79, 104, 113, 0.86);
   border-radius: var(--radius);
-  background: var(--panel-2);
+  background: linear-gradient(180deg, var(--panel-3), #101b20);
   color: var(--text);
   font: inherit;
   font-size: 20px;
   font-weight: 900;
   cursor: pointer;
+  transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
 }
 
 .control-row button:first-child {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), #7fed10);
   color: #071014;
+}
+
+.control-row button:nth-child(2),
+.control-row button:nth-child(3) {
+  background: linear-gradient(135deg, var(--accent-2), #17b8e8);
+  color: #031012;
+}
+
+.control-row button:nth-child(4) {
+  border-color: rgba(255, 114, 92, 0.72);
+  color: #ffd7d0;
 }
 
 .phone-pairing {
@@ -404,7 +501,7 @@ input[type="radio"] {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #0b1318;
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.08), #0b1318);
 }
 
 .phone-pairing img {
@@ -427,10 +524,22 @@ input[type="radio"] {
   font-size: 16px;
 }
 
+.debug-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent-2);
+}
+
 .debug-panel {
-  max-height: 180px;
+  position: fixed;
+  left: 28px;
+  right: 430px;
+  bottom: 28px;
+  z-index: 8;
+  max-height: 170px;
   overflow: auto;
   padding: 12px;
+  background: rgba(5, 9, 11, 0.92);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.48);
 }
 
 .debug-panel pre {
@@ -452,6 +561,8 @@ input[type="radio"] {
   gap: 12px;
   padding: 14px;
   text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .phone-shell h1 {
@@ -475,10 +586,11 @@ input[type="radio"] {
 .phone-shell video {
   width: 100%;
   max-height: 46vh;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-bright);
   border-radius: var(--radius);
   background: black;
   object-fit: contain;
+  box-shadow: var(--shadow);
 }
 
 .phone-command {

@@ -16,6 +16,11 @@
     </section>
 
     <aside class="coach-panel">
+      <div class="coach-brand">
+        <span class="mini-mark">S</span>
+        <span>StretchSense</span>
+      </div>
+
       <div class="session-meta">
         <span id="modeLabel">{{ status.session.mode_label }}</span>
         <span id="focusLabel">{{ status.session.body_focus_label }}</span>
@@ -47,11 +52,11 @@
       {% endif %}
 
       <button id="debugToggle" class="debug-toggle" type="button">Debug</button>
-      <section id="debugPanel" class="debug-panel {{ '' if debug else 'hidden' }}">
-        <pre id="debugJson">{}</pre>
-      </section>
     </aside>
   </main>
+  <section id="debugPanel" class="debug-panel {{ '' if debug else 'hidden' }}">
+    <pre id="debugJson">{}</pre>
+  </section>
   <script src="/static/session.js"></script>
 </body>
 </html>

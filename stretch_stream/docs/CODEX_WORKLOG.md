@@ -150,3 +150,55 @@ Adjusted kiosk styling so landing, setup, session, and phone pages fit a normal 
 ### Known Limitations
 
 - Rendered browser validation was not performed in this environment because the local FastAPI/Uvicorn dependencies are not installed here.
+
+## 2026-05-27 Visual Polish Pass
+
+### Summary
+
+Polished the StretchSense kiosk UI to feel sharper, more professional, more attractive, and more fun while preserving the local-only three-page flow.
+
+### Files Modified
+
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/app/templates/session.html`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### Features / Design Updates
+
+- Added a sharper gym-tech visual direction with charcoal surfaces, lime/cyan energy accents, stronger borders, and cleaner contrast.
+- Added a compact StretchSense brand mark to the session panel.
+- Improved selected setup options with highlighted checked states.
+- Improved button styling, hover states, camera frame treatment, and source badges.
+- Kept pages fitted to the 1280x720 kiosk/browser viewport.
+- Moved the debug panel outside the coach panel so `/session?debug=1` displays as an overlay without breaking the session layout.
+- Fixed the long session state badge so `WAITING_FOR_PHONE` no longer clips.
+
+### Commands / Checks Run
+
+- Started local server with:
+  - `.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8010`
+- Checked health endpoint:
+  - `GET http://127.0.0.1:8010/api/health`
+- Browser-rendered checks:
+  - `GET /`
+  - `GET /setup?mode=before`
+  - `GET /setup?mode=after&body_focus=lower&duration=8`
+  - `GET /session?debug=1`
+  - `GET /session`
+- Interaction tested:
+  - Clicked session `Start` button and confirmed the timer updated.
+- Console checks:
+  - No relevant browser console errors or warnings were reported during the checked pages.
+
+### Results
+
+- Landing page rendered correctly.
+- Setup page rendered within the viewport with the Start Session button visible.
+- Session page rendered within the viewport without scroll.
+- Debug mode rendered as an overlay.
+- Phone fallback/QR state rendered cleanly in the local no-camera environment.
+
+### Known Limitations
+
+- Local rendered QA used the no-camera Windows environment, so it verified the `PHONE_QR` waiting state rather than real USB video.
+- Final camera validation should still be performed on the UNO Q with USB and phone camera inputs.
