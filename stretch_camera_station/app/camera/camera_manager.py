@@ -35,6 +35,11 @@ class CameraManager:
         self.active_source: CameraSource | None = None
         self.phone_source: PhoneWebSocketCameraSource | None = None
 
+    def start_status_web_server(self) -> None:
+        phone_source = self._ensure_phone_source()
+        if phone_source.start_server_only():
+            self._log_event(f"Station web page available at {phone_source.dashboard_url}")
+
     def start_auto(self) -> None:
         self._log_event("Starting automatic camera selection: USB first, phone QR fallback.")
         usb_source = USBCameraSource()
@@ -54,19 +59,10 @@ class CameraManager:
 
     def force_phone(self) -> None:
         self._log_event("Forcing PHONE_QR camera mode.")
-        if self.phone_source is None:
-            self.phone_source = PhoneWebSocketCameraSource(
-                event_log=self.event_log,
-                host=self.server_host,
-                port=self.server_port,
-                public_host=self.public_host,
-                use_https=self.use_https,
-                ssl_certfile=self.ssl_certfile,
-                ssl_keyfile=self.ssl_keyfile,
-            )
+        phone_source = self._ensure_phone_source()
 
-        if self.phone_source.start():
-            self._replace_active_source(self.phone_source, stop_old=True)
+        if phone_source.start():
+            self._replace_active_source(phone_source, stop_old=True)
         else:
             self._log_event("PHONE_QR mode could not start. Dashboard will continue without frames.", logging.ERROR)
 
@@ -120,6 +116,15 @@ class CameraManager:
             return ""
         return self.phone_source.connection_url
 
+    def get_web_status(self) -> dict[str, Any]:
+        status = dict(self.get_info())
+        status["phone_url"] = self.get_phone_url()
+        if self.phone_source is not None:
+            status["dashboard_url"] = self.phone_source.dashboard_url
+        else:
+            status["dashboard_url"] = ""
+        return status
+
     def stop(self) -> None:
         if self.active_source is not None:
             self.active_source.stop()
@@ -132,6 +137,20 @@ class CameraManager:
             self.active_source.stop()
         self.active_source = new_source
         self.logger.info("Active camera source is now %s", new_source.source_type)
+
+    def _ensure_phone_source(self) -> PhoneWebSocketCameraSource:
+        if self.phone_source is None:
+            self.phone_source = PhoneWebSocketCameraSource(
+                event_log=self.event_log,
+                host=self.server_host,
+                port=self.server_port,
+                public_host=self.public_host,
+                use_https=self.use_https,
+                ssl_certfile=self.ssl_certfile,
+                ssl_keyfile=self.ssl_keyfile,
+                status_provider=self.get_web_status,
+            )
+        return self.phone_source
 
     def _log_event(self, message: str, level: int = logging.INFO) -> None:
         if self.event_log is not None:

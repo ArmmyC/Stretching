@@ -55,4 +55,5 @@ python main.py
 - The OpenCV dashboard needs an HDMI/desktop session.
 - Phone camera browser access may require HTTPS when opened from a phone LAN IP.
 - For Tailscale, run with `--public-host <tailscale-ip-or-hostname>` or set `STRETCH_PUBLIC_HOST`.
+- The root web page `/` shows station status. It says when USB is active, and shows the phone QR only when phone mode is active.
 - The MCU sketch is intentionally minimal for now. Add Bridge calls later when you wire sensors into the stretch state pipeline.

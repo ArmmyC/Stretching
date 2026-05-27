@@ -63,6 +63,14 @@ python main.py --mode phone --headless --public-host 100.85.1.123
 
 The server still binds to `0.0.0.0`; `--public-host` only changes the URL shown in logs and QR/dashboard output.
 
+In headless mode, the station also starts a small web status page:
+
+```text
+http://100.85.1.123:8000/
+```
+
+That page shows `USB camera detected` when USB is active. If phone mode is active, it shows the phone camera QR code and pairing link.
+
 ## Run on Arduino UNO Q over SSH
 
 Clone the GitHub repo directly on the UNO Q:
@@ -248,6 +256,7 @@ Phone cannot open camera:
 
 - Use HTTPS mode with a certificate.
 - If using Tailscale, prefer a MagicDNS HTTPS hostname and pass it with `--public-host`.
+- A QR code only opens the URL; it does not bypass browser camera security rules.
 - Confirm the browser has camera permission.
 - Try Chrome or Safari depending on the phone.
 - Disable battery saver if it throttles camera access.

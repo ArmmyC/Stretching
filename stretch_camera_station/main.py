@@ -149,7 +149,9 @@ def main() -> int:
         else:
             manager.start_auto()
 
-        if should_run_headless(args.headless, event_log):
+        run_headless = should_run_headless(args.headless, event_log)
+        if run_headless:
+            manager.start_status_web_server()
             run_headless_loop(manager, pipeline, event_log)
         else:
             from app.dashboard.opencv_dashboard import OpenCVDashboard

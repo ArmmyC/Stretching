@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -26,6 +27,7 @@ class PhoneWebSocketCameraSource(CameraSource):
         use_https: bool = config.USE_HTTPS,
         ssl_certfile: str = config.SSL_CERTFILE,
         ssl_keyfile: str = config.SSL_KEYFILE,
+        status_provider: Callable[[], dict[str, Any]] | None = None,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.event_log = event_log
@@ -39,6 +41,7 @@ class PhoneWebSocketCameraSource(CameraSource):
             use_https=use_https,
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
+            status_provider=status_provider,
             event_log=event_log,
         )
         self._active = False
@@ -47,6 +50,10 @@ class PhoneWebSocketCameraSource(CameraSource):
     @property
     def connection_url(self) -> str:
         return self.server.connection_url
+
+    @property
+    def dashboard_url(self) -> str:
+        return self.server.dashboard_url
 
     @property
     def qr_image(self) -> np.ndarray | None:
@@ -63,6 +70,17 @@ class PhoneWebSocketCameraSource(CameraSource):
             self._log_event(f"Phone QR camera mode active at {self.connection_url}")
         else:
             self._log_event("Phone QR camera web server failed to start.", logging.ERROR)
+        return started
+
+    def start_server_only(self) -> bool:
+        """Start the web status server without making phone frames the active camera."""
+        self.logger.info("Starting station web status server. URL=%s", self.dashboard_url)
+        started = self.server.start()
+        if started:
+            self._qr_image = make_qr_bgr(self.connection_url)
+            self._log_event(f"Station web status page active at {self.dashboard_url}")
+        else:
+            self._log_event("Station web status server failed to start.", logging.ERROR)
         return started
 
     def read(self) -> np.ndarray | None:

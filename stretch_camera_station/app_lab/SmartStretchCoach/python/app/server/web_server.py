@@ -3,15 +3,17 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
+import qrcode
 import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import RedirectResponse
+from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 
 from app import config
@@ -111,6 +113,7 @@ class PhoneWebServer:
         use_https: bool = config.USE_HTTPS,
         ssl_certfile: str = config.SSL_CERTFILE,
         ssl_keyfile: str = config.SSL_KEYFILE,
+        status_provider: Callable[[], dict[str, Any]] | None = None,
         event_log: Any | None = None,
     ) -> None:
         self.frame_buffer = frame_buffer
@@ -122,6 +125,7 @@ class PhoneWebServer:
         self.use_https = self._validate_https(use_https, ssl_certfile, ssl_keyfile)
         self.ssl_certfile = ssl_certfile if self.use_https else ""
         self.ssl_keyfile = ssl_keyfile if self.use_https else ""
+        self.status_provider = status_provider
         self.app = self._build_app()
         self._server: uvicorn.Server | None = None
         self._thread: threading.Thread | None = None
@@ -134,6 +138,10 @@ class PhoneWebServer:
     @property
     def connection_url(self) -> str:
         return f"{self.scheme}://{self.local_ip}:{self.port}/phone"
+
+    @property
+    def dashboard_url(self) -> str:
+        return f"{self.scheme}://{self.local_ip}:{self.port}/"
 
     def start(self) -> bool:
         if self.is_running():
@@ -201,8 +209,20 @@ class PhoneWebServer:
         templates = Jinja2Templates(directory=str(template_dir))
 
         @app.get("/")
-        async def root() -> RedirectResponse:
-            return RedirectResponse(url="/phone")
+        async def root(request: Request):
+            status = self._station_status()
+            return templates.TemplateResponse(
+                request,
+                "station_status.html",
+                {
+                    "status": status,
+                    "connection_url": self.connection_url,
+                    "dashboard_url": self.dashboard_url,
+                    "show_pairing": status.get("source_type") != config.SOURCE_USB,
+                    "is_usb": status.get("source_type") == config.SOURCE_USB,
+                    "is_phone": status.get("source_type") == config.SOURCE_PHONE,
+                },
+            )
 
         @app.get("/health")
         async def health() -> dict[str, Any]:
@@ -212,6 +232,19 @@ class PhoneWebServer:
                 "connection_url": self.connection_url,
                 "buffer": self.frame_buffer.get_info(),
             }
+
+        @app.get("/status")
+        async def status() -> dict[str, Any]:
+            return self._station_status()
+
+        @app.get("/qr.png")
+        async def qr_png() -> Response:
+            image = qrcode.make(self.connection_url)
+            import io
+
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            return Response(content=buffer.getvalue(), media_type="image/png")
 
         @app.get("/phone")
         async def phone_page(request: Request):
@@ -255,6 +288,26 @@ class PhoneWebServer:
                 self.frame_buffer.mark_disconnected(client_id)
 
         return app
+
+    def _station_status(self) -> dict[str, Any]:
+        if self.status_provider is not None:
+            try:
+                status = dict(self.status_provider())
+            except Exception:
+                self.logger.exception("Station status provider failed.")
+                status = {}
+        else:
+            status = {
+                "source_type": config.SOURCE_PHONE,
+                "connection_status": self.frame_buffer.get_info().get("connection_status"),
+            }
+
+        status.setdefault("source_type", config.SOURCE_PHONE)
+        status.setdefault("connection_status", "UNKNOWN")
+        status["phone_url"] = self.connection_url
+        status["dashboard_url"] = self.dashboard_url
+        status["phone_buffer"] = self.frame_buffer.get_info()
+        return status
 
     def _decode_jpeg(self, payload: bytes, client_id: str) -> np.ndarray | None:
         try:
