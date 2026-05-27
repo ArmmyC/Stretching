@@ -216,9 +216,9 @@ class PhoneWebServer:
         @app.get("/phone")
         async def phone_page(request: Request):
             return templates.TemplateResponse(
+                request,
                 "phone_camera.html",
                 {
-                    "request": request,
                     "target_fps": config.PHONE_TARGET_FPS,
                     "jpeg_quality": config.PHONE_JPEG_QUALITY,
                     "frame_width": config.PHONE_FRAME_WIDTH,

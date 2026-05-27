@@ -36,6 +36,11 @@ def parse_args() -> argparse.Namespace:
         help="Phone camera web server port.",
     )
     parser.add_argument(
+        "--public-host",
+        default=config.PUBLIC_HOST,
+        help="Host/IP advertised to phones. Use this for Tailscale, for example 100.x.y.z.",
+    )
+    parser.add_argument(
         "--https",
         action="store_true",
         default=config.USE_HTTPS,
@@ -128,6 +133,7 @@ def main() -> int:
         event_log=event_log,
         server_host=args.host,
         server_port=args.port,
+        public_host=args.public_host,
         use_https=args.https,
         ssl_certfile=args.ssl_cert,
         ssl_keyfile=args.ssl_key,

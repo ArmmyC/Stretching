@@ -55,6 +55,14 @@ Use a custom phone server port:
 python main.py --port 8080
 ```
 
+Use a specific phone-facing IP or hostname, such as a Tailscale IP:
+
+```bash
+python main.py --mode phone --headless --public-host 100.85.1.123
+```
+
+The server still binds to `0.0.0.0`; `--public-host` only changes the URL shown in logs and QR/dashboard output.
+
 ## Run on Arduino UNO Q over SSH
 
 Clone the GitHub repo directly on the UNO Q:
@@ -239,6 +247,7 @@ No USB camera detected:
 Phone cannot open camera:
 
 - Use HTTPS mode with a certificate.
+- If using Tailscale, prefer a MagicDNS HTTPS hostname and pass it with `--public-host`.
 - Confirm the browser has camera permission.
 - Try Chrome or Safari depending on the phone.
 - Disable battery saver if it throttles camera access.

@@ -20,6 +20,7 @@ PHONE_JPEG_QUALITY = 65
 
 SERVER_HOST = os.getenv("STRETCH_SERVER_HOST", "0.0.0.0")
 SERVER_PORT = int(os.getenv("STRETCH_SERVER_PORT", "8000"))
+PUBLIC_HOST = os.getenv("STRETCH_PUBLIC_HOST", "")
 USE_HTTPS = os.getenv("STRETCH_USE_HTTPS", "0").lower() in {"1", "true", "yes"}
 SSL_CERTFILE = os.getenv("STRETCH_SSL_CERT", "")
 SSL_KEYFILE = os.getenv("STRETCH_SSL_KEY", "")

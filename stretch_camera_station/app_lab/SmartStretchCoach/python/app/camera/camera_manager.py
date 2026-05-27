@@ -19,6 +19,7 @@ class CameraManager:
         event_log: Any | None = None,
         server_host: str = config.SERVER_HOST,
         server_port: int = config.SERVER_PORT,
+        public_host: str = config.PUBLIC_HOST,
         use_https: bool = config.USE_HTTPS,
         ssl_certfile: str = config.SSL_CERTFILE,
         ssl_keyfile: str = config.SSL_KEYFILE,
@@ -27,6 +28,7 @@ class CameraManager:
         self.event_log = event_log
         self.server_host = server_host
         self.server_port = server_port
+        self.public_host = public_host
         self.use_https = use_https
         self.ssl_certfile = ssl_certfile
         self.ssl_keyfile = ssl_keyfile
@@ -57,6 +59,7 @@ class CameraManager:
                 event_log=self.event_log,
                 host=self.server_host,
                 port=self.server_port,
+                public_host=self.public_host,
                 use_https=self.use_https,
                 ssl_certfile=self.ssl_certfile,
                 ssl_keyfile=self.ssl_keyfile,

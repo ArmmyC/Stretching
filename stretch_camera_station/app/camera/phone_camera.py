@@ -22,13 +22,14 @@ class PhoneWebSocketCameraSource(CameraSource):
         event_log: Any | None = None,
         host: str = config.SERVER_HOST,
         port: int = config.SERVER_PORT,
+        public_host: str = config.PUBLIC_HOST,
         use_https: bool = config.USE_HTTPS,
         ssl_certfile: str = config.SSL_CERTFILE,
         ssl_keyfile: str = config.SSL_KEYFILE,
     ) -> None:
         self.logger = logging.getLogger(__name__)
         self.event_log = event_log
-        self.local_ip = get_local_ip()
+        self.local_ip = public_host.strip() or get_local_ip()
         self.buffer = PhoneFrameBuffer(event_log=event_log)
         self.server = PhoneWebServer(
             frame_buffer=self.buffer,
