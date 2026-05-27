@@ -26,8 +26,11 @@ Format:
   "gyro_mag": 8.4,
   "gyro_avg": 7.9,
   "stability_score": 61,
+  "arm_threshold": 55.0,
+  "stability_threshold": 20.0,
   "stable": true,
   "arm_raised": true,
+  "state_code": 2,
   "state": "NANO_HOLD_STABLE"
 }
 ```
@@ -50,7 +53,19 @@ CALIBRATE
 STATUS
 SET_ARM_THRESHOLD 55
 SET_STABILITY_THRESHOLD 20
+PLOTTER_ON
+PLOTTER_OFF
+OUTPUT_JSON
+OUTPUT_PLOTTER
 ```
+
+`PLOTTER_ON` and `OUTPUT_PLOTTER` switch the Nano from JSON to labelled numeric output for Arduino Serial Plotter:
+
+```text
+pitch:61.8	roll:4.0	relative_pitch:57.9	arm_threshold:55.0	gyro_mag:8.3	gyro_avg:7.8	stability_threshold:20.0	stability_score:61	arm_raised:100	stable:100	state_band:40
+```
+
+Use `PLOTTER_OFF` or `OUTPUT_JSON` before connecting the Nano to the UNO Q sketch or the browser dashboard.
 
 ## UNO Q Inputs
 

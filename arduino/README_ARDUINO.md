@@ -16,6 +16,9 @@ arduino/
     NanoStretchNode.ino
   UnoQStretchHub/
     UnoQStretchHub.ino
+  tools/
+    nano_signal_dashboard.html
+  NANO_SIGNAL_DASHBOARD.md
   README_ARDUINO.md
   SERIAL_PROTOCOL.md
   CODEX_WORKLOG_ARDUINO.md
@@ -90,7 +93,12 @@ CALIBRATE
 STATUS
 SET_ARM_THRESHOLD 55
 SET_STABILITY_THRESHOLD 20
+PLOTTER_ON
+PLOTTER_OFF
+OUTPUT_JSON
 ```
+
+For live pattern hunting, open `arduino/tools/nano_signal_dashboard.html` in Chrome or Edge, click `Connect Nano`, and select the Nano serial port. The dashboard plots `pitch`, `roll`, `relative_pitch`, `gyro_mag`, `gyro_avg`, `stability_score`, boolean classifications, state code, and optional raw axes. See `NANO_SIGNAL_DASHBOARD.md`.
 
 ## Test UNO Q Alone
 

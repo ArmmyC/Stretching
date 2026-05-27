@@ -8,6 +8,8 @@
 
 - `arduino/NanoStretchNode/NanoStretchNode.ino`
 - `arduino/UnoQStretchHub/UnoQStretchHub.ino`
+- `arduino/tools/nano_signal_dashboard.html`
+- `arduino/NANO_SIGNAL_DASHBOARD.md`
 - `arduino/README_ARDUINO.md`
 - `arduino/SERIAL_PROTOCOL.md`
 - `arduino/CODEX_WORKLOG_ARDUINO.md`
@@ -17,6 +19,8 @@
 - Kept camera pose estimation outside Arduino firmware. UNO Q only accepts `camera_pose` flags from the Linux/Python app.
 - Nano performs first-pass IMU processing and sends compact JSON at 20 Hz.
 - UNO Q performs phase 2 to phase 4 fusion and sends `stretch_state` JSON at 10 Hz.
+- Nano now has JSON output for app/dashboard use and labelled plotter output for Arduino Serial Plotter.
+- Added a dependency-free Web Serial dashboard that plots individual Nano signal lines in Chrome or Edge.
 - Used non-blocking `millis()` timing for calibration, serial parsing, output, distance reads, feedback, debounce, and hold timing.
 - Added 300 ms state debounce to reduce flicker into `HOLD_STEADY` and `UNSTABLE`.
 - Hold time resets only after sustained bad form for 1200 ms.
@@ -38,6 +42,7 @@ Nano:
 
 - `IMU_BACKEND_LSM9DS1`
 - `IMU_BACKEND_BMI270`
+- `DEFAULT_PLOTTER_MODE`
 
 UNO Q:
 
@@ -70,6 +75,8 @@ UNO Q:
 - Created firmware and documentation files in the workspace.
 - Reviewed sketches for missing semicolons, obvious malformed conditionals, and stale-data logic.
 - Ran a local static file sanity check for balanced braces, parentheses, and brackets after stripping comments and strings.
+- Added a self-contained HTML dashboard and reviewed it for local-only Web Serial usage with no external assets or packages.
+- Parsed the dashboard JavaScript with Node's `Function` constructor to catch syntax errors.
 - Added fallback JSON parsing so UNO Q can still accept simple messages when `ArduinoJson` is not installed.
 - Added automatic mock distance when the Modulino library is absent, enabling manual Serial Monitor testing without sensors.
 - Checked for `arduino-cli`; it is not installed in this workspace.
@@ -106,6 +113,8 @@ CALIBRATE
 STATUS
 SET_ARM_THRESHOLD 55
 SET_STABILITY_THRESHOLD 20
+PLOTTER_ON
+OUTPUT_JSON
 ```
 
 ## Known Limitations

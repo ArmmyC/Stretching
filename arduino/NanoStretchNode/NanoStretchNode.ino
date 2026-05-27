@@ -36,6 +36,7 @@ const unsigned long OUTPUT_INTERVAL_MS = 50;       // 20 Hz JSON stream
 const unsigned long CALIBRATION_DURATION_MS = 2000;
 const unsigned long IMU_STALE_MS = 1000;
 const unsigned long HOLD_STABLE_DWELL_MS = 300;
+const bool DEFAULT_PLOTTER_MODE = false;           // true starts in Arduino Serial Plotter-friendly mode
 
 float armRaisedThresholdDeg = 55.0;
 float stabilityThresholdDps = 20.0;
@@ -48,6 +49,11 @@ enum NanoState {
   NANO_UNSTABLE,
   NANO_CALIBRATING,
   NANO_ERROR
+};
+
+enum OutputMode {
+  OUTPUT_JSON,
+  OUTPUT_PLOTTER
 };
 
 float ax = 0.0;
@@ -83,6 +89,7 @@ unsigned long lastOutputMs = 0;
 unsigned long stableCandidateSinceMs = 0;
 
 NanoState nanoState = NANO_CALIBRATING;
+OutputMode outputMode = DEFAULT_PLOTTER_MODE ? OUTPUT_PLOTTER : OUTPUT_JSON;
 
 char commandBuffer[96];
 size_t commandLength = 0;
@@ -96,6 +103,18 @@ const char *nanoStateName(NanoState state) {
     case NANO_CALIBRATING: return "NANO_CALIBRATING";
     case NANO_ERROR: return "NANO_ERROR";
     default: return "NANO_ERROR";
+  }
+}
+
+int nanoStateCode(NanoState state) {
+  switch (state) {
+    case NANO_ARM_LOW: return 0;
+    case NANO_ARM_RAISED: return 1;
+    case NANO_HOLD_STABLE: return 2;
+    case NANO_UNSTABLE: return 3;
+    case NANO_CALIBRATING: return 4;
+    case NANO_ERROR: return -1;
+    default: return -1;
   }
 }
 
@@ -277,13 +296,58 @@ void outputStatusJson(bool force) {
   Serial.print(smoothedGyroMagDps, 1);
   Serial.print(",\"stability_score\":");
   Serial.print(stabilityScore, 0);
+  Serial.print(",\"arm_threshold\":");
+  Serial.print(armRaisedThresholdDeg, 1);
+  Serial.print(",\"stability_threshold\":");
+  Serial.print(stabilityThresholdDps, 1);
   Serial.print(",\"stable\":");
   Serial.print(stableHold ? "true" : "false");
   Serial.print(",\"arm_raised\":");
   Serial.print(armRaised ? "true" : "false");
+  Serial.print(",\"state_code\":");
+  Serial.print(nanoStateCode(nanoState));
   Serial.print(",\"state\":\"");
   Serial.print(nanoStateName(nanoState));
   Serial.println("\"}");
+}
+
+void outputStatusPlotter(bool force) {
+  unsigned long now = millis();
+  if (!force && now - lastOutputMs < OUTPUT_INTERVAL_MS) {
+    return;
+  }
+  lastOutputMs = now;
+
+  Serial.print("pitch:");
+  Serial.print(smoothedPitchDeg, 1);
+  Serial.print("\troll:");
+  Serial.print(rollDeg, 1);
+  Serial.print("\trelative_pitch:");
+  Serial.print(relativePitchDeg, 1);
+  Serial.print("\tarm_threshold:");
+  Serial.print(armRaisedThresholdDeg, 1);
+  Serial.print("\tgyro_mag:");
+  Serial.print(gyroMagDps, 1);
+  Serial.print("\tgyro_avg:");
+  Serial.print(smoothedGyroMagDps, 1);
+  Serial.print("\tstability_threshold:");
+  Serial.print(stabilityThresholdDps, 1);
+  Serial.print("\tstability_score:");
+  Serial.print(stabilityScore, 0);
+  Serial.print("\tarm_raised:");
+  Serial.print(armRaised ? 100 : 0);
+  Serial.print("\tstable:");
+  Serial.print(stableHold ? 100 : 0);
+  Serial.print("\tstate_band:");
+  Serial.println(nanoStateCode(nanoState) * 20);
+}
+
+void outputStatus(bool force) {
+  if (outputMode == OUTPUT_PLOTTER) {
+    outputStatusPlotter(force);
+  } else {
+    outputStatusJson(force);
+  }
 }
 
 void processCommand(char *line) {
@@ -296,7 +360,13 @@ void processCommand(char *line) {
     beginCalibration();
     Serial.println("# OK CALIBRATE");
   } else if (strcmp(line, "STATUS") == 0) {
-    outputStatusJson(true);
+    outputStatus(true);
+  } else if (strcmp(line, "PLOTTER_ON") == 0 || strcmp(line, "OUTPUT_PLOTTER") == 0) {
+    outputMode = OUTPUT_PLOTTER;
+    Serial.println("# OK PLOTTER_ON");
+  } else if (strcmp(line, "PLOTTER_OFF") == 0 || strcmp(line, "OUTPUT_JSON") == 0) {
+    outputMode = OUTPUT_JSON;
+    Serial.println("# OK OUTPUT_JSON");
   } else if (startsWith(line, "SET_ARM_THRESHOLD ")) {
     float value = atof(line + strlen("SET_ARM_THRESHOLD "));
     if (value > 5.0 && value < 170.0) {
@@ -345,6 +415,7 @@ void setup() {
 
   Serial.println("# StretchSense NanoStretchNode boot");
   Serial.println("# Output: newline-delimited JSON at 20 Hz after startup.");
+  Serial.println("# Plotter mode commands: PLOTTER_ON, PLOTTER_OFF, OUTPUT_JSON, OUTPUT_PLOTTER.");
 
   if (!IMU.begin()) {
     imuHealthy = false;
@@ -359,5 +430,5 @@ void setup() {
 void loop() {
   parseSerialCommands();
   updateImu();
-  outputStatusJson(false);
+  outputStatus(false);
 }
