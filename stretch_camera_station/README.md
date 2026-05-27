@@ -81,6 +81,20 @@ Then run again:
 python main.py
 ```
 
+If you run from SSH and see `qt.qpa.xcb: could not connect to display`, the camera pipeline is working but OpenCV cannot open a dashboard window from that SSH session. Use one of these:
+
+```bash
+python main.py --headless
+```
+
+or run from the UNO Q desktop/HDMI terminal for the visible dashboard. If a desktop session is already active on the UNO Q, SSH can sometimes use it with:
+
+```bash
+DISPLAY=:0 python main.py
+```
+
+If permissions block that, start it from the local HDMI desktop terminal instead.
+
 ## Run through Arduino App Lab
 
 This repo also includes an App Lab-ready source tree:
@@ -97,7 +111,9 @@ app_lab/SmartStretchCoach/
   docs/
 ```
 
-Arduino App Lab expects Python code under `python/main.py` and dependencies under `python/requirements.txt`. The `python/main.py` wrapper detects App Lab's runtime and starts the camera station in the background. When run from a normal terminal, it falls back to the same direct Python behavior as the root project.
+Arduino App Lab expects Python code under `python/main.py` and dependencies under `python/requirements.txt`. The `python/main.py` wrapper detects App Lab's runtime and starts the camera station in the background with `STRETCH_HEADLESS=1`. Headless mode avoids `cv2.imshow()` inside App Lab and prints status plus the phone URL to logs.
+
+The App Lab requirements use `opencv-python-headless` to avoid the common `ImportError: libGL.so.1` issue inside App Lab. Use the SSH/HDMI terminal workflow when you want the full OpenCV dashboard window.
 
 Recommended App Lab GUI workflow:
 
@@ -125,7 +141,20 @@ From Windows PowerShell, you can use the helper script:
 .\scripts\deploy_app_lab_ssh.ps1 -Board <boardname>.local
 ```
 
+After changing dependencies, especially when moving from `opencv-python` to `opencv-python-headless`, use:
+
+```powershell
+.\scripts\deploy_app_lab_ssh.ps1 -Board <boardname>.local -CleanCache
+```
+
 Note: App Lab manages `app.yaml` and `sketch.yaml`. Create the App in App Lab or with `arduino-app-cli app new` first, then copy the `python/` and `sketch/` contents from this repo into the generated App directory.
+
+If you want to run the full OpenCV dashboard from SSH and see `ImportError: libGL.so.1`, install the missing system library on the UNO Q:
+
+```bash
+sudo apt update
+sudo apt install -y libgl1 libglib2.0-0
+```
 
 ## USB camera mode
 

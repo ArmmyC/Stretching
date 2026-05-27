@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 import time
+
+os.environ.setdefault("STRETCH_HEADLESS", "1")
 
 from station_main import main as run_station
 

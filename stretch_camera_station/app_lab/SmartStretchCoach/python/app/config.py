@@ -23,6 +23,7 @@ SERVER_PORT = int(os.getenv("STRETCH_SERVER_PORT", "8000"))
 USE_HTTPS = os.getenv("STRETCH_USE_HTTPS", "0").lower() in {"1", "true", "yes"}
 SSL_CERTFILE = os.getenv("STRETCH_SSL_CERT", "")
 SSL_KEYFILE = os.getenv("STRETCH_SSL_KEY", "")
+HEADLESS = os.getenv("STRETCH_HEADLESS", "0").lower() in {"1", "true", "yes"}
 
 DASHBOARD_WINDOW_NAME = "Smart Stretch Coach Station"
 DASHBOARD_WIDTH = 1280

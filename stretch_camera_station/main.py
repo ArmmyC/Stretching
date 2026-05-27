@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import platform
 import sys
+import time
 
 from app import config
 from app.camera.camera_manager import CameraManager
-from app.dashboard.opencv_dashboard import OpenCVDashboard
 from app.logging_setup import setup_logging
 from app.processing.pipeline import ProcessingPipeline
 from app.utils.diagnostics import RuntimeEventLog, log_startup_diagnostics
@@ -49,7 +51,69 @@ def parse_args() -> argparse.Namespace:
         default=config.SSL_KEYFILE,
         help="Path to a TLS private key file for HTTPS phone camera mode.",
     )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        default=config.HEADLESS,
+        help="Run without the OpenCV GUI dashboard. Useful for Arduino App Lab.",
+    )
     return parser.parse_args()
+
+
+def run_headless_loop(
+    manager: CameraManager,
+    pipeline: ProcessingPipeline,
+    event_log: RuntimeEventLog,
+) -> None:
+    """Run the camera and processing loop without opening an OpenCV window."""
+    logger = logging.getLogger(__name__)
+    event_log.add("Headless station loop started. No OpenCV dashboard window will open.")
+
+    if manager.get_info().get("source_type") == config.SOURCE_PHONE:
+        phone_url = manager.get_phone_url()
+        if phone_url:
+            event_log.add(f"Phone camera URL: {phone_url}")
+
+    last_status_time = 0.0
+    while True:
+        frame = manager.read()
+        result = pipeline.process(frame)
+        now = time.monotonic()
+
+        if now - last_status_time >= 5.0:
+            info = manager.get_info()
+            frame_size = info.get("frame_size")
+            resolution = f"{frame_size[0]}x{frame_size[1]}" if frame_size else "N/A"
+            logger.info(
+                "Headless status source=%s status=%s fps=%.1f resolution=%s stretch_state=%s message=%s",
+                info.get("source_type", config.SOURCE_NONE),
+                info.get("connection_status", "UNKNOWN"),
+                float(info.get("fps") or 0.0),
+                resolution,
+                result.get("stretch_state"),
+                result.get("message"),
+            )
+            last_status_time = now
+
+        time.sleep(0.02 if frame is not None else 0.08)
+
+
+def should_run_headless(requested_headless: bool, event_log: RuntimeEventLog) -> bool:
+    if requested_headless:
+        return True
+
+    if platform.system().lower() != "linux":
+        return False
+
+    has_display = bool(os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY"))
+    if has_display:
+        return False
+
+    event_log.add(
+        "No DISPLAY or WAYLAND_DISPLAY found. Running headless instead of opening the OpenCV dashboard.",
+        level=logging.WARNING,
+    )
+    return True
 
 
 def main() -> int:
@@ -69,11 +133,7 @@ def main() -> int:
         ssl_keyfile=args.ssl_key,
     )
     pipeline = ProcessingPipeline(event_log=event_log)
-    dashboard = OpenCVDashboard(
-        camera_manager=manager,
-        pipeline=pipeline,
-        event_log=event_log,
-    )
+    dashboard = None
 
     try:
         if args.mode == "usb":
@@ -83,7 +143,17 @@ def main() -> int:
         else:
             manager.start_auto()
 
-        dashboard.run()
+        if should_run_headless(args.headless, event_log):
+            run_headless_loop(manager, pipeline, event_log)
+        else:
+            from app.dashboard.opencv_dashboard import OpenCVDashboard
+
+            dashboard = OpenCVDashboard(
+                camera_manager=manager,
+                pipeline=pipeline,
+                event_log=event_log,
+            )
+            dashboard.run()
         return 0
     except KeyboardInterrupt:
         event_log.add("Keyboard interrupt received. Shutting down.")
@@ -97,7 +167,8 @@ def main() -> int:
         return 1
     finally:
         try:
-            dashboard.stop()
+            if dashboard is not None:
+                dashboard.stop()
         finally:
             manager.stop()
             event_log.add("Smart Stretch Coach station stopped.")

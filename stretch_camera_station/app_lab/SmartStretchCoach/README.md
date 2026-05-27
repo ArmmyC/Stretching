@@ -14,6 +14,8 @@ Use it in either of these ways:
 
 App Lab should install packages from `python/requirements.txt` into the App virtual environment.
 
+This App Lab version uses `opencv-python-headless` and starts with `STRETCH_HEADLESS=1`, so it does not open an OpenCV GUI window. Watch the Python logs for the selected camera source, FPS, and phone URL. Use the root project over SSH/HDMI for the full OpenCV dashboard window.
+
 ## Option B: SSH and App CLI
 
 From your computer, copy this folder to the UNO Q:
@@ -29,6 +31,12 @@ arduino-app-cli app logs "/home/arduino/ArduinoApps/SmartStretchCoach" --all
 ```
 
 The `app new` command lets App Lab generate `app.yaml` and `sketch/sketch.yaml`. This source folder intentionally does not overwrite those generated manifests.
+
+If the App previously installed `opencv-python`, remove the generated virtual environment so App Lab installs `opencv-python-headless` cleanly:
+
+```bash
+rm -rf /home/arduino/ArduinoApps/SmartStretchCoach/.cache
+```
 
 ## Option C: Terminal mode from this App folder
 

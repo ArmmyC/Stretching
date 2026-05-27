@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Board,
 
-    [string]$AppName = "SmartStretchCoach"
+    [string]$AppName = "SmartStretchCoach",
+
+    [switch]$CleanCache
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,6 +23,11 @@ ssh $remote "if [ ! -d '$remoteAppDir' ]; then arduino-app-cli app new '$AppName
 
 Write-Host "Copying App Lab files to ${remote}:$remoteAppDir ..."
 scp -r "$source/." "${remote}:$remoteAppDir/"
+
+if ($CleanCache) {
+    Write-Host "Removing generated App Lab Python cache so dependencies reinstall cleanly..."
+    ssh $remote "rm -rf '$remoteAppDir/.cache'"
+}
 
 Write-Host "Done."
 Write-Host "Start it with:"
