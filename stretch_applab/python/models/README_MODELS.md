@@ -14,6 +14,8 @@ Recommended first test settings:
 
 - Start with `640x480`.
 - If pose FPS is low on the UNO Q, try `320x240`.
+- Pose inference now defaults to `POSE_INFERENCE_WIDTH=320`, which runs MediaPipe on a smaller copy of the frame while drawing landmarks back on the full stream.
+- If FPS is still low, try `POSE_INFERENCE_WIDTH=256` and `POSE_FRAME_STRIDE=2`.
 - Keep `POSE_MODEL_PATH=models/pose_landmarker.task` unless you intentionally place the model somewhere else.
 
 If MediaPipe is unavailable or too slow on the UNO Q, keep the camera stream running and use the documented fallback path later. The current MVP disables pose tracking gracefully when the model or MediaPipe runtime is missing.

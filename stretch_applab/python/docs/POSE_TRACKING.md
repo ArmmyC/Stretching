@@ -11,6 +11,7 @@ The MVP uses MediaPipe Pose Landmarker when available:
 - `num_poses=1`
 - Segmentation masks disabled
 - Confidence thresholds near `0.5`
+- Pose inference resized to `POSE_INFERENCE_WIDTH=320` by default
 
 If MediaPipe or the model file is missing, pose tracking is disabled and `/video_feed` continues showing the raw camera stream with status text. MoveNet Lightning is the planned fallback if MediaPipe is unavailable or too slow. ArUco or visible body markers can remain a future backup for tightly controlled demos.
 
@@ -65,3 +66,23 @@ The camera can say whether the stretch appears visible and roughly raised. The N
 This is 2D pose tracking. It cannot perfectly detect depth, torso rotation, occluded joints, or whether a stretch is being performed with good form. Lighting, clothing, camera angle, and partial framing all affect the flags.
 
 Recommended demo stretch: overhead shoulder stretch.
+
+## Performance Tuning
+
+On UNO Q, start with the Lite model and a smaller inference frame:
+
+```bash
+export POSE_INFERENCE_WIDTH=320
+export POSE_FRAME_STRIDE=1
+python tools/test_pose_camera.py --camera 0 --width 640 --height 480
+```
+
+If pose is still around 5-6 FPS, try:
+
+```bash
+export POSE_INFERENCE_WIDTH=256
+export POSE_FRAME_STRIDE=2
+python tools/test_pose_camera.py --camera 0 --width 320 --height 240 --pose-width 256 --pose-stride 2
+```
+
+`POSE_FRAME_STRIDE=2` runs inference every other frame and reuses the last skeleton overlay between runs. This is usually good enough for the overhead shoulder demo because the motion is slow.

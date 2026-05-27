@@ -16,6 +16,8 @@ TORSO_CENTER_MARGIN = 0.12
 MIN_LANDMARK_CONFIDENCE = 0.5
 
 DEFAULT_MODEL_PATH = "models/pose_landmarker.task"
+DEFAULT_INFERENCE_WIDTH = 320
+DEFAULT_FRAME_STRIDE = 1
 FPS_LOG_INTERVAL_SEC = 5.0
 
 LANDMARK_INDEXES = {
@@ -189,10 +191,28 @@ def draw_pose_overlay(
 
 
 class PoseTracker:
-    def __init__(self, model_path: str | None = None, enabled: bool = True):
+    def __init__(
+        self,
+        model_path: str | None = None,
+        enabled: bool = True,
+        inference_width: int | None = None,
+        frame_stride: int | None = None,
+    ):
         self.requested_enabled = bool(enabled)
         self.backend = os.getenv("POSE_BACKEND", "mediapipe").strip().lower() or "mediapipe"
         self.model_path = _resolve_model_path(model_path or os.getenv("POSE_MODEL_PATH", DEFAULT_MODEL_PATH))
+        self.inference_width = _resolve_int(
+            inference_width,
+            os.getenv("POSE_INFERENCE_WIDTH"),
+            DEFAULT_INFERENCE_WIDTH,
+            minimum=0,
+        )
+        self.frame_stride = _resolve_int(
+            frame_stride,
+            os.getenv("POSE_FRAME_STRIDE"),
+            DEFAULT_FRAME_STRIDE,
+            minimum=1,
+        )
         self.model_loaded = False
         self.enabled = False
         self.last_error: str | None = None
@@ -205,12 +225,19 @@ class PoseTracker:
         self._lock = threading.Lock()
         self._last_status = self._empty_status()
         self._last_landmarks: dict[str, dict[str, float]] = {}
+        self._last_metrics = self._empty_metrics()
+        self._frame_count = 0
         self._fps_log_started = time.monotonic()
         self._fps_log_total = 0.0
         self._fps_log_count = 0
 
         logger.info("Pose tracker init. enabled=%s backend=%s", self.requested_enabled, self.backend)
         logger.info("Pose model path: %s", self.model_path)
+        logger.info(
+            "Pose performance config. inference_width=%s frame_stride=%s",
+            self.inference_width or "source",
+            self.frame_stride,
+        )
 
         if not self.requested_enabled:
             self.last_error = "Pose tracking disabled by configuration."
@@ -235,9 +262,21 @@ class PoseTracker:
             self._last_status = self._status_from_metrics(metrics)
             return output, metrics
 
+        self._frame_count += 1
+        if self._should_reuse_previous_pose():
+            metrics = dict(self._last_metrics)
+            metrics["pose_reused"] = True
+            metrics["pose_frame_stride"] = self.frame_stride
+            metrics["pose_inference_width"] = self.inference_width
+            if context.get("draw_landmarks", True):
+                draw_pose_overlay(output, self._last_landmarks, metrics)
+            self._last_status = self._status_from_metrics(metrics)
+            return output, metrics
+
         start = time.perf_counter()
         try:
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            inference_frame = self._resize_for_inference(frame)
+            rgb = cv2.cvtColor(inference_frame, cv2.COLOR_BGR2RGB)
             mp_image = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=rgb)
             timestamp_ms = self._next_timestamp_ms()
 
@@ -256,6 +295,9 @@ class PoseTracker:
                 "pose_backend": self.backend,
                 "fps_pose": round(self.fps_pose, 2),
                 "last_pose_timestamp": self.last_pose_timestamp,
+                "pose_reused": False,
+                "pose_inference_width": self.inference_width,
+                "pose_frame_stride": self.frame_stride,
                 "landmarks": landmarks,
                 **flags,
             }
@@ -263,6 +305,7 @@ class PoseTracker:
             if context.get("draw_landmarks", True):
                 draw_pose_overlay(output, landmarks, flags)
 
+            self._last_metrics = dict(metrics)
             self._last_status = self._status_from_metrics(metrics)
             self._log_average_fps(self.fps_pose)
             return output, metrics
@@ -285,6 +328,8 @@ class PoseTracker:
                 "last_pose_timestamp": self.last_pose_timestamp,
                 "model_path": str(self.model_path),
                 "model_loaded": self.model_loaded,
+                "pose_inference_width": self.inference_width,
+                "pose_frame_stride": self.frame_stride,
             }
         )
         if self.last_error:
@@ -336,6 +381,24 @@ class PoseTracker:
         self._last_timestamp_ms = timestamp_ms
         return timestamp_ms
 
+    def _resize_for_inference(self, frame: np.ndarray) -> np.ndarray:
+        if self.inference_width <= 0:
+            return frame
+
+        h, w = frame.shape[:2]
+        if w <= self.inference_width:
+            return frame
+
+        target_h = max(1, int(h * (self.inference_width / float(w))))
+        return cv2.resize(frame, (self.inference_width, target_h), interpolation=cv2.INTER_AREA)
+
+    def _should_reuse_previous_pose(self) -> bool:
+        if self.frame_stride <= 1:
+            return False
+        if not self._last_landmarks:
+            return False
+        return (self._frame_count - 1) % self.frame_stride != 0
+
     def _empty_metrics(self) -> dict[str, Any]:
         return {
             "pose_enabled": bool(self.enabled and self.model_loaded),
@@ -349,6 +412,9 @@ class PoseTracker:
             "confidence": 0.0,
             "fps_pose": round(float(self.fps_pose), 2),
             "last_pose_timestamp": self.last_pose_timestamp,
+            "pose_reused": False,
+            "pose_inference_width": self.inference_width,
+            "pose_frame_stride": self.frame_stride,
             "landmarks": {},
         }
 
@@ -363,8 +429,11 @@ class PoseTracker:
             "arm_raised": False,
             "torso_centered": False,
             "confidence": 0.0,
+            "pose_reused": False,
             "model_path": str(self.model_path),
             "model_loaded": self.model_loaded,
+            "pose_inference_width": self.inference_width,
+            "pose_frame_stride": self.frame_stride,
         }
 
     def _status_from_metrics(self, metrics: dict[str, Any]) -> dict[str, Any]:
@@ -379,6 +448,9 @@ class PoseTracker:
             "arm_raised",
             "torso_centered",
             "confidence",
+            "pose_reused",
+            "pose_inference_width",
+            "pose_frame_stride",
         ):
             status[key] = metrics.get(key, status[key])
         return status
@@ -412,3 +484,15 @@ def _resolve_model_path(model_path: str) -> Path:
         return path
     project_root = Path(__file__).resolve().parents[1]
     return project_root / path
+
+
+def _resolve_int(value: int | None, env_value: str | None, default: int, minimum: int) -> int:
+    raw: Any = value if value is not None else env_value
+    if raw is None or raw == "":
+        return default
+    try:
+        parsed = int(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid pose integer value %r. Using %s.", raw, default)
+        return default
+    return max(minimum, parsed)

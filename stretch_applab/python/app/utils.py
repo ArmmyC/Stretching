@@ -56,6 +56,8 @@ def log_startup_details(force_camera_mode: str, public_base_url: str) -> None:
     logger.info("POSE_BACKEND=%s", os.getenv("POSE_BACKEND", "mediapipe"))
     logger.info("POSE_MODEL_PATH=%s", os.getenv("POSE_MODEL_PATH", "models/pose_landmarker.task"))
     logger.info("POSE_DRAW_LANDMARKS=%s", os.getenv("POSE_DRAW_LANDMARKS", "true"))
+    logger.info("POSE_INFERENCE_WIDTH=%s", os.getenv("POSE_INFERENCE_WIDTH", "320"))
+    logger.info("POSE_FRAME_STRIDE=%s", os.getenv("POSE_FRAME_STRIDE", "1"))
 
 
 def get_env_int(name: str, default: int) -> int:

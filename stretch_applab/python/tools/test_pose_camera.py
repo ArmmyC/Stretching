@@ -23,10 +23,17 @@ def main() -> int:
     parser.add_argument("--width", type=int, default=640, help="Requested frame width.")
     parser.add_argument("--height", type=int, default=480, help="Requested frame height.")
     parser.add_argument("--model", default=DEFAULT_MODEL_PATH, help="Path to MediaPipe pose_landmarker.task.")
+    parser.add_argument("--pose-width", type=int, default=None, help="Resize frame to this width for pose inference. Use 0 for source size.")
+    parser.add_argument("--pose-stride", type=int, default=None, help="Run pose every Nth frame and reuse the last skeleton between runs.")
     args = parser.parse_args()
 
     _setup_logging()
-    tracker = PoseTracker(model_path=args.model, enabled=True)
+    tracker = PoseTracker(
+        model_path=args.model,
+        enabled=True,
+        inference_width=args.pose_width,
+        frame_stride=args.pose_stride,
+    )
     status = tracker.get_status()
     print(f"model_loaded={status.get('model_loaded')} backend={status.get('pose_backend')} model_path={status.get('model_path')}")
     if status.get("last_error"):
@@ -105,6 +112,9 @@ def _compact_metrics(metrics: dict[str, Any], status: dict[str, Any], camera_fps
         "torso_centered",
         "confidence",
         "fps_pose",
+        "pose_reused",
+        "pose_inference_width",
+        "pose_frame_stride",
     )
     compact = {key: metrics.get(key) for key in keys}
     compact["model_loaded"] = status.get("model_loaded")

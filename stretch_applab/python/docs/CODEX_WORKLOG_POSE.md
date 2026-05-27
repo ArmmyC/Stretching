@@ -42,6 +42,8 @@ MoveNet Lightning remains the planned fallback if MediaPipe is unavailable or to
 - `POSE_MODEL_PATH=models/pose_landmarker.task`
 - `POSE_DRAW_LANDMARKS=true`
 - `POSE_BACKEND=mediapipe`
+- `POSE_INFERENCE_WIDTH=320`
+- `POSE_FRAME_STRIDE=1`
 
 ## Tests Run
 
@@ -75,3 +77,11 @@ MoveNet Lightning remains the planned fallback if MediaPipe is unavailable or to
 - Try `320x240` if pose FPS is low on the UNO Q.
 - Add Nano IMU fusion later using `camera_arm_raised + nano_arm_raised + nano_stable + distance_ok`.
 - Add MoveNet Lightning fallback only if MediaPipe is unavailable or too slow on target hardware.
+
+## Follow-up: Low FPS Tuning
+
+Added performance knobs after UNO Q reported about 5-6 FPS:
+
+- `POSE_INFERENCE_WIDTH`: resize frame before MediaPipe inference; default `320`, use `0` for source size.
+- `POSE_FRAME_STRIDE`: run pose every Nth frame and reuse the last landmarks between inference frames; default `1`.
+- `tools/test_pose_camera.py --pose-width` and `--pose-stride` for quick board-side tests.
