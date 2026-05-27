@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StretchSense</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page landing-page">
+  <main class="landing-shell">
+    <section class="brand-block">
+      <div class="brand-mark">SS</div>
+      <h1>StretchSense</h1>
+      <p>Quick stretching guidance before and after your workout.</p>
+    </section>
+
+    <section class="landing-actions" aria-label="Choose session mode">
+      <a class="mode-button before" href="/setup?mode=before">Before Workout</a>
+      <a class="mode-button after" href="/setup?mode=after">After Workout</a>
+    </section>
+
+    <section class="status-strip" aria-label="Station status">
+      <span>{{ status.camera.source_label }}</span>
+      <span>{{ "%.1f"|format(status.camera.fps or 0.0) }} FPS</span>
+      <span>{{ status.camera.force_camera_mode|upper }}</span>
+    </section>
+  </main>
+</body>
+</html>

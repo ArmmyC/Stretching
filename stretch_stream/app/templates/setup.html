@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StretchSense Setup</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page setup-page">
+  <main class="setup-shell">
+    <header class="top-bar">
+      <a class="back-link" href="/">StretchSense</a>
+      <div class="camera-pill {{ 'ok' if status.camera.camera_state == 'ACTIVE' else 'wait' }}">
+        {{ status.camera.source_label }}
+      </div>
+    </header>
+
+    <form class="setup-grid" action="/session" method="get">
+      <section class="setup-panel">
+        <h1>Set your stretch</h1>
+
+        <fieldset>
+          <legend>Mode</legend>
+          <label><input type="radio" name="mode" value="before" {% if status.session.mode == 'before' %}checked{% endif %}> Before Workout</label>
+          <label><input type="radio" name="mode" value="after" {% if status.session.mode == 'after' %}checked{% endif %}> After Workout</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Body focus</legend>
+          <label><input type="radio" name="body_focus" value="upper" {% if status.session.body_focus == 'upper' %}checked{% endif %}> Upper Body</label>
+          <label><input type="radio" name="body_focus" value="lower" {% if status.session.body_focus == 'lower' %}checked{% endif %}> Lower Body</label>
+          <label><input type="radio" name="body_focus" value="full" {% if status.session.body_focus == 'full' %}checked{% endif %}> Full Body</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Time</legend>
+          <label><input type="radio" name="duration" value="3" {% if status.session.duration == 3 %}checked{% endif %}> 3 min</label>
+          <label><input type="radio" name="duration" value="5" {% if status.session.duration == 5 %}checked{% endif %}> 5 min</label>
+          <label><input type="radio" name="duration" value="8" {% if status.session.duration == 8 %}checked{% endif %}> 8 min</label>
+        </fieldset>
+
+        <button class="primary-action" type="submit">Start Session</button>
+      </section>
+
+      <aside class="camera-setup">
+        {% if status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected %}
+          <h2>USB Camera Active</h2>
+          <p>Phone QR disabled because USB camera is available.</p>
+          <img class="setup-preview" src="/video_feed" alt="USB camera preview">
+        {% elif status.camera.phone_connected %}
+          <h2>Phone Camera Active</h2>
+          <p>Keep the phone screen open and facing your body.</p>
+          <img class="setup-preview" src="/video_feed" alt="Phone camera preview">
+        {% else %}
+          <h2>Scan QR to use your phone camera.</h2>
+          <img class="qr" src="/qr.png" alt="Phone camera QR code">
+          <p class="url">{{ phone_url }}</p>
+        {% endif %}
+      </aside>
+    </form>
+  </main>
+</body>
+</html>

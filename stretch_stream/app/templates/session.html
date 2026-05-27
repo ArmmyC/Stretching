@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StretchSense Session</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page session-page" data-debug="{{ '1' if debug else '0' }}">
+  <main class="session-shell">
+    <section class="camera-stage">
+      <div class="camera-frame">
+        <img src="/video_feed" alt="Live camera stream">
+        <div id="cameraBadge" class="camera-badge">{{ status.camera.source_label }}</div>
+      </div>
+    </section>
+
+    <aside class="coach-panel">
+      <div class="session-meta">
+        <span id="modeLabel">{{ status.session.mode_label }}</span>
+        <span id="focusLabel">{{ status.session.body_focus_label }}</span>
+      </div>
+
+      <div id="timer" class="timer">{{ status.session.remaining_time }}</div>
+      <h1 id="instruction">{{ status.session.instruction }}</h1>
+      <h2 id="stretchName">{{ status.session.current_stretch }}</h2>
+      <div id="stateLabel" class="state-label">{{ status.session.state }}</div>
+      <div class="score-line">Score <strong id="scoreValue">{{ status.session.score }}</strong></div>
+
+      <div class="control-row">
+        <button data-action="start">Start</button>
+        <button data-action="pause">Pause</button>
+        <button data-action="next">Next</button>
+        <button data-action="reset">Reset</button>
+      </div>
+
+      {% if status.camera.selected_camera_source != 'USB_CAMERA' and not status.camera.phone_connected %}
+        <section id="phonePairing" class="phone-pairing">
+          <img src="/qr.png" alt="Phone camera QR code">
+          <p>Scan QR</p>
+        </section>
+      {% else %}
+        <section id="phonePairing" class="phone-pairing hidden">
+          <img src="/qr.png" alt="Phone camera QR code">
+          <p>Scan QR</p>
+        </section>
+      {% endif %}
+
+      <button id="debugToggle" class="debug-toggle" type="button">Debug</button>
+      <section id="debugPanel" class="debug-panel {{ '' if debug else 'hidden' }}">
+        <pre id="debugJson">{}</pre>
+      </section>
+    </aside>
+  </main>
+  <script src="/static/session.js"></script>
+</body>
+</html>
