@@ -55,6 +55,78 @@ Use a custom phone server port:
 python main.py --port 8080
 ```
 
+## Run on Arduino UNO Q over SSH
+
+Clone the GitHub repo directly on the UNO Q:
+
+```bash
+git clone https://github.com/ArmmyC/Stretching.git
+cd Stretching/stretch_camera_station
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+If `opencv-python` is difficult to install on the UNO Q, install the system camera packages first:
+
+```bash
+sudo apt update
+sudo apt install -y python3-opencv v4l-utils
+```
+
+Then run again:
+
+```bash
+python main.py
+```
+
+## Run through Arduino App Lab
+
+This repo also includes an App Lab-ready source tree:
+
+```text
+app_lab/SmartStretchCoach/
+  python/
+    main.py
+    station_main.py
+    requirements.txt
+    app/
+  sketch/
+    sketch.ino
+  docs/
+```
+
+Arduino App Lab expects Python code under `python/main.py` and dependencies under `python/requirements.txt`. The `python/main.py` wrapper detects App Lab's runtime and starts the camera station in the background. When run from a normal terminal, it falls back to the same direct Python behavior as the root project.
+
+Recommended App Lab GUI workflow:
+
+1. Open Arduino App Lab.
+2. Create a new App named `SmartStretchCoach`.
+3. Copy `app_lab/SmartStretchCoach/python/` into the App's `python/` folder.
+4. Copy `app_lab/SmartStretchCoach/sketch/sketch.ino` into the App's `sketch/sketch.ino`.
+5. Click Run.
+
+SSH/App CLI workflow:
+
+```bash
+ssh arduino@<boardname>.local
+arduino-app-cli app new "SmartStretchCoach"
+exit
+scp -r app_lab/SmartStretchCoach/. arduino@<boardname>.local:/home/arduino/ArduinoApps/SmartStretchCoach/
+ssh arduino@<boardname>.local
+arduino-app-cli app start "/home/arduino/ArduinoApps/SmartStretchCoach"
+arduino-app-cli app logs "/home/arduino/ArduinoApps/SmartStretchCoach" --all
+```
+
+From Windows PowerShell, you can use the helper script:
+
+```powershell
+.\scripts\deploy_app_lab_ssh.ps1 -Board <boardname>.local
+```
+
+Note: App Lab manages `app.yaml` and `sketch.yaml`. Create the App in App Lab or with `arduino-app-cli app new` first, then copy the `python/` and `sketch/` contents from this repo into the generated App directory.
+
 ## USB camera mode
 
 USB mode uses OpenCV `VideoCapture`.

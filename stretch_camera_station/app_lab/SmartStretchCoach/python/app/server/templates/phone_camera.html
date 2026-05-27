@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Stretch Coach Phone Camera</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #101418;
+      color: #f4f7fb;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header, footer {
+      padding: 14px 16px;
+      background: #182028;
+      border-bottom: 1px solid #2d3945;
+    }
+    footer {
+      border-top: 1px solid #2d3945;
+      border-bottom: 0;
+      font-size: 13px;
+      color: #afbac6;
+    }
+    main {
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+    #status {
+      margin-top: 6px;
+      color: #8fd694;
+      font-size: 14px;
+    }
+    video {
+      width: 100%;
+      max-height: 62vh;
+      background: #050607;
+      border: 1px solid #303c48;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      font-size: 14px;
+    }
+    .metric {
+      padding: 10px;
+      background: #182028;
+      border: 1px solid #2d3945;
+      border-radius: 8px;
+    }
+    .metric strong {
+      display: block;
+      color: #afbac6;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    canvas {
+      display: none;
+    }
+    button {
+      min-height: 44px;
+      color: #ffffff;
+      background: #2f6df6;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Smart Stretch Coach Camera</h1>
+    <div id="status">Preparing camera...</div>
+  </header>
+
+  <main>
+    <video id="preview" autoplay playsinline muted></video>
+    <button id="restart" type="button">Restart Camera</button>
+    <div class="metrics">
+      <div class="metric"><strong>Stream</strong><span id="streamState">Not connected</span></div>
+      <div class="metric"><strong>Target FPS</strong><span>{{ target_fps }}</span></div>
+      <div class="metric"><strong>Frames Sent</strong><span id="framesSent">0</span></div>
+      <div class="metric"><strong>Buffered Bytes</strong><span id="bufferedBytes">0</span></div>
+    </div>
+    <canvas id="canvas" width="{{ frame_width }}" height="{{ frame_height }}"></canvas>
+  </main>
+
+  <footer>
+    Wellness guidance prototype only. It is not a medical device or diagnostic tool.
+  </footer>
+
+  <script>
+    const targetFps = {{ target_fps }};
+    const jpegQuality = {{ jpeg_quality }} / 100;
+    const frameWidth = {{ frame_width }};
+    const frameHeight = {{ frame_height }};
+    const video = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const statusEl = document.getElementById("status");
+    const streamStateEl = document.getElementById("streamState");
+    const framesSentEl = document.getElementById("framesSent");
+    const bufferedBytesEl = document.getElementById("bufferedBytes");
+    const restartButton = document.getElementById("restart");
+
+    let socket = null;
+    let stream = null;
+    let timer = null;
+    let framesSent = 0;
+    let sending = false;
+
+    function setStatus(message, ok = true) {
+      statusEl.textContent = message;
+      statusEl.style.color = ok ? "#8fd694" : "#ff9a8a";
+    }
+
+    function wsUrl() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}/ws/phone-frame`;
+    }
+
+    async function startCamera() {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: frameWidth },
+          height: { ideal: frameHeight }
+        }
+      };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+      await video.play();
+      setStatus("Camera ready. Connecting to station...");
+    }
+
+    function connectSocket() {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        return;
+      }
+      socket = new WebSocket(wsUrl());
+      socket.binaryType = "arraybuffer";
+      socket.onopen = () => {
+        streamStateEl.textContent = "Connected";
+        setStatus("Streaming frames to station");
+      };
+      socket.onclose = () => {
+        streamStateEl.textContent = "Disconnected";
+        setStatus("WebSocket disconnected. Reconnecting...", false);
+        window.setTimeout(connectSocket, 1000);
+      };
+      socket.onerror = () => {
+        streamStateEl.textContent = "Socket error";
+        setStatus("WebSocket error", false);
+      };
+    }
+
+    function startFrameLoop() {
+      if (timer) {
+        window.clearInterval(timer);
+      }
+      const intervalMs = Math.max(50, Math.round(1000 / targetFps));
+      timer = window.setInterval(captureAndSendFrame, intervalMs);
+    }
+
+    function captureAndSendFrame() {
+      if (!socket || socket.readyState !== WebSocket.OPEN || sending) {
+        return;
+      }
+      if (socket.bufferedAmount > 2_000_000) {
+        bufferedBytesEl.textContent = socket.bufferedAmount.toString();
+        return;
+      }
+      if (!video.videoWidth || !video.videoHeight) {
+        return;
+      }
+
+      sending = true;
+      ctx.drawImage(video, 0, 0, frameWidth, frameHeight);
+      canvas.toBlob(async (blob) => {
+        try {
+          if (blob && socket.readyState === WebSocket.OPEN) {
+            socket.send(await blob.arrayBuffer());
+            framesSent += 1;
+            framesSentEl.textContent = framesSent.toString();
+            bufferedBytesEl.textContent = socket.bufferedAmount.toString();
+          }
+        } finally {
+          sending = false;
+        }
+      }, "image/jpeg", jpegQuality);
+    }
+
+    async function startAll() {
+      try {
+        setStatus("Requesting camera permission...");
+        await startCamera();
+        connectSocket();
+        startFrameLoop();
+      } catch (error) {
+        console.error(error);
+        setStatus(`Camera failed: ${error.message}`, false);
+      }
+    }
+
+    restartButton.addEventListener("click", startAll);
+    startAll();
+  </script>
+</body>
+</html>
