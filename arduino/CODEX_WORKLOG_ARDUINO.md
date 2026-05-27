@@ -21,6 +21,8 @@
 - UNO Q performs phase 2 to phase 4 fusion and sends `stretch_state` JSON at 10 Hz.
 - Nano now has JSON output for app/dashboard use and labelled plotter output for Arduino Serial Plotter.
 - Added a dependency-free Web Serial dashboard that plots individual Nano signal lines in Chrome or Edge.
+- Added Nano `OUTPUT_FULL_JSON` mode at 10 Hz for optional onboard sensors without changing the default compact 20 Hz UNO Q stream.
+- Added optional Nano reads for magnetometer, APDS9960 proximity/light/color/gesture, LPS22HB pressure, HTS221 or HS300x temperature/humidity, and PDM microphone level.
 - Used non-blocking `millis()` timing for calibration, serial parsing, output, distance reads, feedback, debounce, and hold timing.
 - Added 300 ms state debounce to reduce flicker into `HOLD_STEADY` and `UNSTABLE`.
 - Hold time resets only after sustained bad form for 1200 ms.
@@ -32,6 +34,12 @@
 - Nano IMU:
   - `Arduino_LSM9DS1` for `IMU_BACKEND_LSM9DS1`.
   - `Arduino_BMI270_BMM150` for `IMU_BACKEND_BMI270`.
+- Nano optional onboard sensors:
+  - `Arduino_APDS9960` for proximity, gesture, RGB color, and ambient light.
+  - `Arduino_LPS22HB` for pressure.
+  - `Arduino_HTS221` for original Sense temperature/humidity.
+  - `Arduino_HS300x` for Rev2 temperature/humidity.
+  - `PDM` for microphone loudness metrics.
 - UNO Q optional:
   - `Arduino_Modulino` for `ModulinoDistance`, `ModulinoPixels`, `ModulinoBuzzer`, and `ModulinoButtons`.
   - `ArduinoJson` for robust JSON parsing.
@@ -43,6 +51,13 @@ Nano:
 - `IMU_BACKEND_LSM9DS1`
 - `IMU_BACKEND_BMI270`
 - `DEFAULT_PLOTTER_MODE`
+- `USE_MAGNETOMETER`
+- `USE_APDS9960_SENSOR`
+- `USE_BAROMETER_SENSOR`
+- `USE_ENVIRONMENT_SENSOR`
+- `USE_PDM_MICROPHONE`
+- `ENV_BACKEND_HTS221`
+- `ENV_BACKEND_HS300X`
 
 UNO Q:
 
@@ -69,6 +84,8 @@ UNO Q:
 - Some tutorials still show `#include <Modulino.h>`, so the sketch checks both headers.
 - LCD support is stubbed because no exact LCD library or wiring was specified.
 - `Serial1` is enabled for the Nano UART path; set `USE_NANO_ON_SERIAL1 0` if the selected UNO Q board profile does not expose `Serial1`.
+- The exact Nano variant matters: original Sense uses `Arduino_LSM9DS1` and `Arduino_HTS221`; Rev2-style boards use `Arduino_BMI270_BMM150` and `Arduino_HS300x`.
+- The microphone dashboard values are derived loudness metrics only. The firmware does not stream or store raw audio.
 
 ## Tests Performed
 
@@ -77,6 +94,7 @@ UNO Q:
 - Ran a local static file sanity check for balanced braces, parentheses, and brackets after stripping comments and strings.
 - Added a self-contained HTML dashboard and reviewed it for local-only Web Serial usage with no external assets or packages.
 - Parsed the dashboard JavaScript with Node's `Function` constructor to catch syntax errors.
+- Extended the dashboard signal list for magnetometer, proximity, light/color, pressure, temperature, humidity, microphone, and gesture fields.
 - Added fallback JSON parsing so UNO Q can still accept simple messages when `ArduinoJson` is not installed.
 - Added automatic mock distance when the Modulino library is absent, enabling manual Serial Monitor testing without sensors.
 - Checked for `arduino-cli`; it is not installed in this workspace.
@@ -114,6 +132,7 @@ STATUS
 SET_ARM_THRESHOLD 55
 SET_STABILITY_THRESHOLD 20
 PLOTTER_ON
+OUTPUT_FULL_JSON
 OUTPUT_JSON
 ```
 
@@ -124,6 +143,7 @@ OUTPUT_JSON
 - Camera flags are trusted inputs; bad pose inference upstream can produce bad guidance downstream.
 - The fallback JSON parser is intentionally small and only supports the flat JSON messages documented here.
 - Buttons are mapped to three Modulino buttons: A start/pause, B next, C reset. Separate start and pause remain available as serial commands.
+- Optional onboard sensors publish default values if the library is absent or the board variant does not include that sensor.
 
 ## Recommended Next Steps
 

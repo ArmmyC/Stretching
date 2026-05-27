@@ -108,7 +108,7 @@
 
     .status-grid {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 14px;
     }
@@ -268,7 +268,8 @@
           <option value="9600">9600 baud</option>
         </select>
         <button id="connectButton" class="primary">Connect Nano</button>
-        <button id="jsonButton" disabled>JSON Mode</button>
+        <button id="fullJsonButton" disabled>Full Sensors</button>
+        <button id="jsonButton" disabled>Compact JSON</button>
         <button id="calibrateButton" disabled>Calibrate</button>
         <button id="clearButton">Clear</button>
         <button id="exportButton">Export CSV</button>
@@ -291,12 +292,20 @@
         <div class="value" id="gyroAvgValue">-</div>
       </div>
       <div class="stat">
-        <div class="label">Stability</div>
-        <div class="value" id="stabilityValue">-</div>
+        <div class="label">Mag Field</div>
+        <div class="value" id="magValue">-</div>
       </div>
       <div class="stat">
-        <div class="label">Arm Raised</div>
-        <div class="value" id="armRaisedValue">-</div>
+        <div class="label">Proximity</div>
+        <div class="value" id="proximityValue">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Mic Level</div>
+        <div class="value" id="micValue">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Environment</div>
+        <div class="value" id="environmentValue">-</div>
       </div>
       <div class="stat">
         <div class="label">Samples</div>
@@ -325,6 +334,29 @@
       { key: "gyro_mag", label: "Gyro magnitude", unit: "deg/s", color: "#dc2626", main: true },
       { key: "gyro_avg", label: "Gyro average", unit: "deg/s", color: "#d97706", main: true, threshold: "stability_threshold" },
       { key: "stability_score", label: "Stability score", unit: "", color: "#16a34a", main: true, fixedMin: 0, fixedMax: 100 },
+      { key: "mx", label: "Mag X", unit: "uT", color: "#1e40af", main: false },
+      { key: "my", label: "Mag Y", unit: "uT", color: "#0f766e", main: false },
+      { key: "mz", label: "Mag Z", unit: "uT", color: "#6d28d9", main: false },
+      { key: "mag_mag", label: "Mag magnitude", unit: "uT", color: "#9333ea", main: true },
+      { key: "heading_deg", label: "Mag heading", unit: "deg", color: "#4f46e5", main: true, fixedMin: 0, fixedMax: 360 },
+      { key: "proximity", label: "Proximity", unit: "", color: "#0e7490", main: true, fixedMin: 0, fixedMax: 255 },
+      { key: "ambient", label: "Ambient light", unit: "", color: "#ca8a04", main: true },
+      { key: "red", label: "Color red", unit: "", color: "#dc2626", main: false },
+      { key: "green", label: "Color green", unit: "", color: "#16a34a", main: false },
+      { key: "blue", label: "Color blue", unit: "", color: "#2563eb", main: false },
+      { key: "pressure_hpa", label: "Pressure", unit: "hPa", color: "#0369a1", main: true },
+      { key: "temperature_c", label: "Temperature", unit: "C", color: "#c2410c", main: true },
+      { key: "humidity", label: "Humidity", unit: "%", color: "#0284c7", main: true, fixedMin: 0, fixedMax: 100 },
+      { key: "mic_level", label: "Mic level", unit: "%", color: "#be123c", main: true, fixedMin: 0, fixedMax: 100 },
+      { key: "mic_rms", label: "Mic RMS", unit: "", color: "#e11d48", main: false },
+      { key: "mic_peak", label: "Mic peak", unit: "", color: "#f43f5e", main: false },
+      { key: "mic_dbfs", label: "Mic dBFS", unit: "dB", color: "#9f1239", main: true, fixedMin: -90, fixedMax: 0 },
+      { key: "gesture_code", label: "Gesture code", unit: "", color: "#64748b", main: false, fixedMin: -1, fixedMax: 4 },
+      { key: "mag_ok_num", label: "Mag OK", unit: "", color: "#4f46e5", main: false, fixedMin: 0, fixedMax: 100 },
+      { key: "apds_ok_num", label: "APDS OK", unit: "", color: "#0e7490", main: false, fixedMin: 0, fixedMax: 100 },
+      { key: "baro_ok_num", label: "Baro OK", unit: "", color: "#0369a1", main: false, fixedMin: 0, fixedMax: 100 },
+      { key: "env_ok_num", label: "Env OK", unit: "", color: "#0284c7", main: false, fixedMin: 0, fixedMax: 100 },
+      { key: "mic_ok_num", label: "Mic OK", unit: "", color: "#be123c", main: false, fixedMin: 0, fixedMax: 100 },
       { key: "arm_raised_num", label: "Arm raised", unit: "", color: "#0f766e", main: true, fixedMin: 0, fixedMax: 100 },
       { key: "stable_num", label: "Stable hold", unit: "", color: "#65a30d", main: true, fixedMin: 0, fixedMax: 100 },
       { key: "state_code", label: "State code", unit: "", color: "#475569", main: true, fixedMin: -1, fixedMax: 4 },
@@ -338,6 +370,7 @@
 
     const els = {
       connectButton: document.getElementById("connectButton"),
+      fullJsonButton: document.getElementById("fullJsonButton"),
       jsonButton: document.getElementById("jsonButton"),
       calibrateButton: document.getElementById("calibrateButton"),
       clearButton: document.getElementById("clearButton"),
@@ -350,8 +383,10 @@
       stateValue: document.getElementById("stateValue"),
       relativePitchValue: document.getElementById("relativePitchValue"),
       gyroAvgValue: document.getElementById("gyroAvgValue"),
-      stabilityValue: document.getElementById("stabilityValue"),
-      armRaisedValue: document.getElementById("armRaisedValue"),
+      magValue: document.getElementById("magValue"),
+      proximityValue: document.getElementById("proximityValue"),
+      micValue: document.getElementById("micValue"),
+      environmentValue: document.getElementById("environmentValue"),
       sampleValue: document.getElementById("sampleValue")
     };
 
@@ -375,6 +410,11 @@
       sample.t_host = Date.now();
       sample.arm_raised_num = sample.arm_raised ? 100 : 0;
       sample.stable_num = sample.stable ? 100 : 0;
+      sample.mag_ok_num = sample.mag_ok ? 100 : 0;
+      sample.apds_ok_num = sample.apds_ok ? 100 : 0;
+      sample.baro_ok_num = sample.baro_ok ? 100 : 0;
+      sample.env_ok_num = sample.env_ok ? 100 : 0;
+      sample.mic_ok_num = sample.mic_ok ? 100 : 0;
       if (typeof sample.state_code !== "number") {
         sample.state_code = stateCodeFromName(sample.state);
       }
@@ -620,8 +660,14 @@
         els.stateValue.textContent = latest.state || (Number.isFinite(latest.state_code) ? latest.state_code : "-");
         els.relativePitchValue.textContent = formatValue(Number(latest.relative_pitch), "deg");
         els.gyroAvgValue.textContent = formatValue(Number(latest.gyro_avg), "deg/s");
-        els.stabilityValue.textContent = formatValue(Number(latest.stability_score), "");
-        els.armRaisedValue.textContent = latest.arm_raised ? "Yes" : "No";
+        els.magValue.textContent = formatValue(Number(latest.mag_mag), "uT");
+        els.proximityValue.textContent = formatValue(Number(latest.proximity), "");
+        els.micValue.textContent = formatValue(Number(latest.mic_level), "%");
+        const temp = Number(latest.temperature_c);
+        const humidity = Number(latest.humidity);
+        els.environmentValue.textContent = Number.isFinite(temp) || Number.isFinite(humidity)
+          ? `${Number.isFinite(temp) ? temp.toFixed(1) + " C" : "-"} / ${Number.isFinite(humidity) ? humidity.toFixed(0) + "%" : "-"}`
+          : "-";
       }
       els.sampleValue.textContent = samples.length.toString();
 
@@ -651,11 +697,12 @@
       await port.open({ baudRate: Number(els.baudSelect.value) });
       writer = port.writable.getWriter();
       els.connectButton.textContent = "Disconnect";
+      els.fullJsonButton.disabled = false;
       els.jsonButton.disabled = false;
       els.calibrateButton.disabled = false;
       els.connectionText.textContent = "Connected";
       readLoopActive = true;
-      await sendCommand("OUTPUT_JSON");
+      await sendCommand("OUTPUT_FULL_JSON");
       readLoop();
     }
 
@@ -683,6 +730,7 @@
       port = null;
       reader = null;
       els.connectButton.textContent = "Connect Nano";
+      els.fullJsonButton.disabled = true;
       els.jsonButton.disabled = true;
       els.calibrateButton.disabled = true;
       els.connectionText.textContent = "Disconnected";
@@ -745,6 +793,7 @@
       }
     });
 
+    els.fullJsonButton.addEventListener("click", () => sendCommand("OUTPUT_FULL_JSON"));
     els.jsonButton.addEventListener("click", () => sendCommand("OUTPUT_JSON"));
     els.calibrateButton.addEventListener("click", () => sendCommand("CALIBRATE"));
     els.clearButton.addEventListener("click", () => {
