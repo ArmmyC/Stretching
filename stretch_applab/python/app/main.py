@@ -127,8 +127,8 @@ async def qr_png() -> Response:
 
 
 @app.get("/api/status")
-async def api_status() -> dict[str, Any]:
-    return full_status()
+async def api_status(debug: bool = Query(False)) -> dict[str, Any]:
+    return full_status(debug=debug)
 
 
 @app.get("/api/health")
@@ -192,7 +192,7 @@ async def api_session_config(request: Request) -> dict[str, Any]:
     }
 
 
-def full_status() -> dict[str, Any]:
+def full_status(debug: bool = False) -> dict[str, Any]:
     camera = source_manager.get_status()
     camera_state = camera["camera_state"]
     session_camera_state = "WAITING_FOR_PHONE" if camera_state == "WAITING_FOR_PHONE" else "NO_CAMERA" if camera_state == "NO_CAMERA" else None
@@ -203,6 +203,7 @@ def full_status() -> dict[str, Any]:
         "local_ip_or_base_url": BASE_URL,
         "app_host": os.getenv("APP_HOST", "0.0.0.0"),
         "app_port": os.getenv("APP_PORT", "8000"),
+        "pose": inference.get_pose_status(debug=debug),
         "qr_url": PHONE_URL,
         "timestamp": time.time(),
     }
