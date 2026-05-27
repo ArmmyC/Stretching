@@ -120,3 +120,33 @@ Created a new local kiosk web app named `stretch_stream` for the Smart Stretch C
 - Verify phone camera mode through HTTPS or Tailscale Serve.
 - Add a simple persistence-free routine summary screen if time allows.
 - Insert a real pose estimation model inside `app/inference.py`.
+
+## 2026-05-27 UI Fit Adjustment
+
+### Summary
+
+Adjusted kiosk styling so landing, setup, session, and phone pages fit a normal monitor viewport without requiring scrolling on desktop/kiosk displays.
+
+### Files Modified
+
+- `stretch_stream/app/static/style.css`
+- `stretch_stream/docs/CODEX_WORKLOG.md`
+
+### Changes Made
+
+- Changed the app font stack to generic `sans-serif`.
+- Reduced oversized headings, buttons, badges, setup labels, timer, and instruction text.
+- Changed desktop page shells from open-ended `min-height` layouts to fixed `100vh` layouts with hidden page overflow.
+- Added constrained heights for setup and session grids.
+- Compressed setup controls and camera preview areas.
+- Kept mobile/narrow layouts scrollable for usability.
+- Added a short-height desktop media query for smaller monitors.
+
+### Tests Performed
+
+- Static CSS brace-balance check passed.
+- Python source compile check passed after the UI-only edit.
+
+### Known Limitations
+
+- Rendered browser validation was not performed in this environment because the local FastAPI/Uvicorn dependencies are not installed here.
