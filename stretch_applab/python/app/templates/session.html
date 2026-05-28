@@ -107,6 +107,25 @@
         </div>
       </div>
 
+      <div class="session-overlay rest-guideline hidden" id="rest-guideline" aria-live="polite">
+        <div class="rest-guideline-copy">
+          <div class="rest-guideline-info">
+            <span id="rest-guideline-kicker">Get ready</span>
+            <h2 id="rest-guideline-name">Next stretch</h2>
+            <p id="rest-guideline-copy">Get ready for the next pose</p>
+            <div class="rest-guideline-countdown">Starts in <strong id="rest-guideline-timer">10</strong></div>
+          </div>
+          <div class="rest-guideline-media">
+            <video class="hidden" id="rest-guideline-video" muted loop playsinline></video>
+            <img class="hidden" id="rest-guideline-image" alt="Pose guideline">
+            <div class="rest-guideline-placeholder" id="rest-guideline-placeholder">
+              <strong>Pose guideline</strong>
+              <span>Drop an image or video into /static/PoseGuideline</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="session-overlay session-complete hidden" id="session-complete" aria-live="polite">
         <div class="complete-copy">
           <div class="summary-score-block">
@@ -130,8 +149,8 @@
               <p id="summary-share-url">{{ status.captures.share_url }}</p>
             </div>
           </div>
-          <a class="summary-dashboard-link" href="https://example.com/dashboard" target="_blank" rel="noopener">
-            Dashboard placeholder
+          <a class="summary-dashboard-link" href="/dashboard">
+            Open dashboard
           </a>
           <div class="summary-hardware-guide" aria-label="Summary controls">
             <div><span>A</span><strong>Dashboard</strong></div>

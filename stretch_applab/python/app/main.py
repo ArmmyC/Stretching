@@ -184,6 +184,15 @@ async def session_page(
     )
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {"status": full_status(), "phone_url": PHONE_URL},
+    )
+
+
 @app.get("/phone", response_class=HTMLResponse)
 async def phone_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -385,17 +394,20 @@ def full_status(debug: bool = False) -> dict[str, Any]:
     camera = source_manager.get_status()
     camera_state = camera["camera_state"]
     session_camera_state = "WAITING_FOR_PHONE" if camera_state == "WAITING_FOR_PHONE" else "NO_CAMERA" if camera_state == "NO_CAMERA" else None
-    pose = inference.get_pose_status(debug=debug)
+    pose = inference.get_pose_status(debug=True)
     nano_imu = hardware_bridge.latest_nano_imu()
     session = session_manager.get_status(camera_state=session_camera_state, pose_metrics=pose, nano_metrics=nano_imu)
     setup = setup_boundary_status(camera, pose)
+    pose_status = dict(pose)
+    if not debug:
+        pose_status.pop("landmarks", None)
     return {
         "camera": camera,
         "session": session,
         "local_ip_or_base_url": BASE_URL,
         "app_host": os.getenv("APP_HOST", "0.0.0.0"),
         "app_port": os.getenv("APP_PORT", "8000"),
-        "pose": pose,
+        "pose": pose_status,
         "setup": setup,
         "hardware": hardware_bridge.status(),
         "nano_ble": nano_ble_manager.status(),
@@ -421,6 +433,7 @@ def setup_boundary_status(camera: dict[str, Any], pose: dict[str, Any]) -> dict[
         pose_age = max(0.0, time.time() - float(pose_timestamp))
 
     user_visible = bool(pose.get("user_visible"))
+    upper_body_visible = bool(pose.get("upper_body_visible"))
     torso_centered = bool(pose.get("torso_centered"))
     full_body_visible = bool(pose.get("full_body_visible"))
     confidence = float(pose.get("confidence") or 0.0)
@@ -458,17 +471,12 @@ def setup_boundary_status(camera: dict[str, Any], pose: dict[str, Any]) -> dict[
         label = "Step into frame"
         instruction = "Move into the camera boundary"
         badge_class = "warn"
-    elif not torso_centered:
-        state = "CENTER_BODY"
-        label = "Center body"
-        instruction = "Move to the center of the frame"
+    elif not upper_body_visible and not full_body_visible:
+        state = "SHOW_UPPER_BODY"
+        label = "Show upper body"
+        instruction = "Show shoulders and one arm"
         badge_class = "warn"
-    elif not full_body_visible:
-        state = "SHOW_FULL_BODY"
-        label = "Show full body"
-        instruction = "Step back until your body fits"
-        badge_class = "warn"
-    elif confidence < 0.45:
+    elif confidence < 0.28:
         state = "LOW_CONFIDENCE"
         label = "Hold still"
         instruction = "Hold still for camera check"
@@ -491,6 +499,7 @@ def setup_boundary_status(camera: dict[str, Any], pose: dict[str, Any]) -> dict[
         "pose_fresh": pose_fresh,
         "pose_age_sec": round(pose_age, 2) if pose_age is not None else None,
         "user_visible": user_visible,
+        "upper_body_visible": upper_body_visible,
         "torso_centered": torso_centered,
         "full_body_visible": full_body_visible,
         "confidence": round(confidence, 4),

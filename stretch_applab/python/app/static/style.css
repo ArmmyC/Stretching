@@ -1370,6 +1370,111 @@ button {
   font-size: 1.7em;
 }
 
+.rest-guideline {
+  z-index: 6;
+  color: #081016;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.rest-guideline-copy {
+  width: min(1120px, 94vw);
+  min-height: min(620px, 78vh);
+  display: grid;
+  grid-template-columns: minmax(260px, 0.62fr) minmax(320px, 1fr);
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+  text-align: left;
+}
+
+.rest-guideline-info {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rest-guideline-info > span {
+  color: #52606b;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.rest-guideline-info h2 {
+  margin: 0;
+  font-size: clamp(42px, 6vw, 88px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.rest-guideline-info p {
+  margin: 0;
+  color: #52606b;
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 700;
+}
+
+.rest-guideline-countdown {
+  color: #52606b;
+  font-size: clamp(20px, 2vw, 30px);
+  font-weight: 800;
+}
+
+.rest-guideline-countdown strong {
+  color: #081016;
+  font-family: var(--mono);
+  font-size: 1.8em;
+}
+
+.rest-guideline-media {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid rgba(8, 16, 22, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(184, 255, 58, 0.12), rgba(54, 224, 255, 0.12)),
+    rgba(255, 255, 255, 0.72);
+  box-shadow: 0 34px 88px -54px rgba(8, 16, 22, 0.56);
+}
+
+.rest-guideline-media video,
+.rest-guideline-media img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.rest-guideline-placeholder {
+  position: absolute;
+  inset: clamp(18px, 3vw, 34px);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 2px dashed rgba(8, 16, 22, 0.22);
+  border-radius: 14px;
+  color: #52606b;
+  text-align: center;
+}
+
+.rest-guideline-placeholder strong {
+  color: #081016;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 1;
+}
+
+.rest-guideline-placeholder span {
+  max-width: 360px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
 .session-complete {
   color: #081016;
   background: rgba(250, 252, 248, 0.94);
@@ -2051,6 +2156,28 @@ button {
   .pose-card {
     grid-row: auto;
     width: min(260px, 70vw);
+  }
+
+  .rest-guideline {
+    padding: 24px;
+  }
+
+  .rest-guideline-copy {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .rest-guideline-info {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rest-guideline-media {
+    width: min(680px, 86vw);
+    justify-self: center;
+    aspect-ratio: 4 / 3;
   }
 
   .summary-showcase {

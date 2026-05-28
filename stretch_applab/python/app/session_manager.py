@@ -6,6 +6,13 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from app.stretch_models import evaluate_stretch_model
+
+
+READY_SECONDS = 5
+STRETCH_SECONDS = 30
+REST_SECONDS = 10
+
 
 @dataclass(frozen=True)
 class StretchDefinition:
@@ -13,30 +20,33 @@ class StretchDefinition:
     score_hint: str = "steady_hold"
     needs_arm_raised: bool = False
     needs_full_body: bool = False
+    model_key: str | None = None
 
 
 ROUTINES = {
-    "before": ["Arm circles", "Hip opener", "Hamstring sweep"],
+    "before": ["Arm circles", "Hip opener", StretchDefinition("Hamstring sweep", "hamstring_reach", needs_full_body=True, model_key="hamstring_reach")],
     "after": [
-        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
-        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Hamstring reach", "hamstring_reach", needs_full_body=True, model_key="hamstring_reach"),
+        StretchDefinition("Overhead reach hold", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Standing side bend stretch", "side_bend", needs_arm_raised=True, model_key="side_bend"),
         StretchDefinition("Doorway chest opener", "open_chest"),
-        StretchDefinition("Shoulder external rotation", "controlled_rotation"),
     ],
     "after_upper": [
-        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
-        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Wall slides", "overhead_control", needs_arm_raised=True),
+        StretchDefinition("Overhead reach hold", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Standing side bend stretch", "side_bend", needs_arm_raised=True, model_key="side_bend"),
         StretchDefinition("Doorway chest opener", "open_chest"),
         StretchDefinition("Shoulder external rotation", "controlled_rotation"),
     ],
     "upper": [
         StretchDefinition("Arm circles", "controlled_rotation"),
         StretchDefinition("Wall slides", "overhead_control", needs_arm_raised=True),
-        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
-        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Standing side bend stretch", "side_bend", needs_arm_raised=True, model_key="side_bend"),
+        StretchDefinition("Overhead reach hold", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Doorway chest opener", "open_chest"),
     ],
-    "lower": ["Quad stretch", "Hamstring stretch", "Calf stretch"],
-    "full": ["Shoulder stretch", "Hip opener", "Hamstring stretch"],
+    "lower": ["Quad stretch", StretchDefinition("Hamstring stretch", "hamstring_reach", needs_full_body=True, model_key="hamstring_reach"), "Calf stretch"],
+    "full": ["Shoulder stretch", "Hip opener", StretchDefinition("Hamstring stretch", "hamstring_reach", needs_full_body=True, model_key="hamstring_reach")],
 }
 
 
@@ -49,6 +59,7 @@ def _safe_float(value: Any) -> float | None:
 INSTRUCTIONS = {
     "IDLE": "Press Start",
     "READY": "Get ready",
+    "REST": "Rest",
     "HOLD": "Hold the stretch",
     "GOOD": "Good, keep steady",
     "DONE": "Stretch complete",
@@ -76,6 +87,9 @@ class SessionManager:
         self._started_at: float | None = None
         self._paused_elapsed = 0.0
         self._current_index = 0
+        self._current_step = 0
+        self._phase = "ready"
+        self._complete = False
 
     def start(self) -> dict[str, Any]:
         with self._lock:
@@ -84,6 +98,11 @@ class SessionManager:
                 self._paused_elapsed = 0.0
                 self._running = True
                 self._paused = False
+                if self._complete:
+                    self._current_step = 0
+                    self._current_index = 0
+                    self._phase = "ready"
+                    self._complete = False
             elif self._paused:
                 self._started_at = time.monotonic() - self._paused_elapsed
                 self._paused = False
@@ -101,7 +120,10 @@ class SessionManager:
     def next(self) -> dict[str, Any]:
         with self._lock:
             routine = self._routine_locked()
-            self._current_index = min(self._current_index + 1, max(0, len(routine) - 1))
+            self._complete = False
+            self._current_step = min(self._current_step + 1, max(0, self._target_stretches_locked() - 1))
+            self._current_index = self._current_step % max(1, len(routine))
+            self._phase = "stretch"
             self._started_at = time.monotonic()
             self._paused_elapsed = 0.0
             self._running = True
@@ -116,6 +138,9 @@ class SessionManager:
             self._started_at = None
             self._paused_elapsed = 0.0
             self._current_index = 0
+            self._current_step = 0
+            self._phase = "ready"
+            self._complete = False
             self.logger.info("Session reset")
             return self._status_locked()
 
@@ -127,7 +152,9 @@ class SessionManager:
                 self.config.body_focus = body_focus
             if duration in {3, 5, 8}:
                 self.config.duration = int(duration)
-            self._current_index = min(self._current_index, len(self._routine_locked()) - 1)
+            routine = self._routine_locked()
+            self._current_step = min(self._current_step, max(0, self._target_stretches_locked() - 1))
+            self._current_index = self._current_step % max(1, len(routine))
             self.logger.info(
                 "Session config mode=%s body_focus=%s duration=%s",
                 self.config.mode,
@@ -178,14 +205,65 @@ class SessionManager:
             return 0.0
         return max(0.0, time.monotonic() - self._started_at)
 
+    def _target_stretches_locked(self) -> int:
+        return max(1, int((self.config.duration * 60 + STRETCH_SECONDS - 1) // STRETCH_SECONDS))
+
+    def _advance_phase_locked(self) -> None:
+        if not self._running or self._paused or self._complete:
+            return
+
+        routine = self._routine_locked()
+        target_stretches = self._target_stretches_locked()
+
+        while self._running and not self._paused and not self._complete:
+            elapsed = self._elapsed_locked()
+            if self._phase == "ready":
+                if elapsed < READY_SECONDS:
+                    break
+                self._phase = "stretch"
+                self._started_at = time.monotonic() - max(0.0, elapsed - READY_SECONDS)
+                self._paused_elapsed = 0.0
+                continue
+
+            if self._phase == "stretch":
+                if elapsed < STRETCH_SECONDS:
+                    break
+                if self._current_step >= target_stretches - 1:
+                    self._complete = True
+                    self._running = False
+                    self._paused = False
+                    self._started_at = None
+                    self._paused_elapsed = 0.0
+                    break
+                self._current_step += 1
+                self._current_index = self._current_step % max(1, len(routine))
+                self._phase = "rest"
+                self._started_at = time.monotonic() - max(0.0, elapsed - STRETCH_SECONDS)
+                self._paused_elapsed = 0.0
+                continue
+
+            if self._phase == "rest":
+                if elapsed < REST_SECONDS:
+                    break
+                self._phase = "stretch"
+                self._started_at = time.monotonic() - max(0.0, elapsed - REST_SECONDS)
+                self._paused_elapsed = 0.0
+                continue
+
+            break
+
     def _state_for_elapsed(self, elapsed: float) -> str:
+        if self._complete:
+            return "DONE"
         if not self._running:
             return "IDLE"
-        if elapsed < 5:
+        if self._phase == "ready":
             return "READY"
-        if elapsed < 15:
-            return "HOLD"
+        if self._phase == "rest":
+            return "REST"
         if elapsed < 20:
+            return "HOLD"
+        if elapsed < STRETCH_SECONDS:
             return "GOOD"
         return "DONE"
 
@@ -196,14 +274,17 @@ class SessionManager:
         stretch: StretchDefinition | str,
         pose_metrics: dict[str, Any] | None = None,
         nano_metrics: dict[str, Any] | None = None,
+        stretch_model: dict[str, Any] | None = None,
     ) -> int:
         if state in {"IDLE", "READY"}:
             return 0
+        if state == "REST":
+            return 0
 
         if state == "HOLD":
-            base = 64 + min(16, int(max(0.0, elapsed - 5.0) * 1.6))
+            base = 64 + min(16, int(max(0.0, elapsed) * 0.8))
         elif state == "GOOD":
-            base = 88 + min(7, int(max(0.0, elapsed - 15.0) * 1.4))
+            base = 84 + min(12, int(max(0.0, elapsed - 20.0) * 1.2))
         else:
             base = 100
 
@@ -230,6 +311,11 @@ class SessionManager:
                     form_multiplier -= 0.18
                 if stretch.score_hint in {"controlled_rotation", "overhead_control"} and confidence >= 0.65:
                     form_multiplier += 0.04
+
+        if stretch_model and stretch_model.get("available"):
+            model_score = _safe_float(stretch_model.get("score"))
+            if model_score is not None:
+                form_multiplier += max(-0.22, min(0.08, (model_score - 68.0) / 260.0))
 
         if nano_metrics and nano_metrics.get("fresh"):
             az = _safe_float(nano_metrics.get("az"))
@@ -263,13 +349,29 @@ class SessionManager:
         pose_metrics: dict[str, Any] | None = None,
         nano_metrics: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        self._advance_phase_locked()
         routine = self._routine_locked()
         current_stretch = routine[self._current_index]
         current_stretch_name = self._stretch_name(current_stretch)
         elapsed = self._elapsed_locked()
         state = self._state_for_elapsed(elapsed)
-        remaining = max(0, 20 - int(elapsed))
-        score = self._score_locked(state, elapsed, current_stretch, pose_metrics, nano_metrics)
+        if self._complete:
+            elapsed = float(STRETCH_SECONDS)
+        phase_limit = READY_SECONDS if state == "READY" else REST_SECONDS if state == "REST" else STRETCH_SECONDS
+        remaining = max(0, phase_limit - int(elapsed))
+        stretch_model = evaluate_stretch_model(
+            current_stretch.model_key if isinstance(current_stretch, StretchDefinition) else None,
+            pose_metrics,
+            nano_metrics,
+        )
+        score = self._score_locked(state, elapsed, current_stretch, pose_metrics, nano_metrics, stretch_model)
+        total_stretches = self._target_stretches_locked()
+        completed_stretch_seconds = min(
+            self.config.duration * 60,
+            (self._current_step * STRETCH_SECONDS) + (
+                STRETCH_SECONDS if self._complete else elapsed if state in {"HOLD", "GOOD", "DONE"} else 0
+            ),
+        )
         return {
             "mode": self.config.mode,
             "mode_label": "Before Workout" if self.config.mode == "before" else "After Workout",
@@ -282,11 +384,20 @@ class SessionManager:
             "duration": self.config.duration,
             "routine": [self._stretch_name(stretch) for stretch in routine],
             "current_index": self._current_index,
+            "current_step": self._current_step,
+            "total_stretches": total_stretches,
             "current_stretch": current_stretch_name,
             "state": state,
             "instruction": INSTRUCTIONS[state],
             "elapsed_time": round(elapsed, 1),
             "remaining_time": remaining,
+            "segment_seconds": phase_limit,
+            "stretch_seconds": STRETCH_SECONDS,
+            "rest_seconds": REST_SECONDS,
+            "stretch_time_goal": self.config.duration * 60,
+            "stretch_time_completed": round(completed_stretch_seconds, 1),
+            "complete": self._complete,
+            "stretch_model": stretch_model,
             "score": score,
             "running": self._running,
             "paused": self._paused,

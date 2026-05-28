@@ -4,8 +4,8 @@
   "use strict";
 
   const READY_SECONDS = 5;
-  const STRETCH_SECONDS = 20;
-  const BOUNDARY_READY_HOLD_MS = 900;
+  const STRETCH_SECONDS = 30;
+  const BOUNDARY_READY_HOLD_MS = 450;
   const debugEnabled = document.body.dataset.debug === "1";
   const el = (id) => document.getElementById(id);
 
@@ -25,6 +25,14 @@
     nextPreview: el("next-preview"),
     nextName: el("next-name"),
     nextCountdownNumber: el("next-countdown-number"),
+    restGuideline: el("rest-guideline"),
+    restGuidelineKicker: el("rest-guideline-kicker"),
+    restGuidelineName: el("rest-guideline-name"),
+    restGuidelineCopy: el("rest-guideline-copy"),
+    restGuidelineTimer: el("rest-guideline-timer"),
+    restGuidelineVideo: el("rest-guideline-video"),
+    restGuidelineImage: el("rest-guideline-image"),
+    restGuidelinePlaceholder: el("rest-guideline-placeholder"),
     completeOverlay: el("session-complete"),
     completeScore: el("complete-score"),
     completeMeta: el("complete-meta"),
@@ -66,6 +74,8 @@
   let lastAudioIndex = -1;
   let lastCountdownValue = null;
   let lastCompletedAudioIndex = -1;
+  let activeGuidelineSlug = "";
+  let guidelineLoadToken = 0;
 
   function setText(id, value) {
     const node = el(id);
@@ -122,6 +132,7 @@
   function shortInstruction(instruction) {
     const map = {
       "Get ready": "Get ready",
+      "Rest": "Rest",
       "Hold the stretch": "Hold the stretch",
       "Good, keep steady": "Good, keep steady",
       "Stretch complete": "Done",
@@ -138,17 +149,116 @@
   }
 
   function sessionTotal(session) {
-    return Array.isArray(session.routine) ? session.routine.length : 1;
+    return Number(session.total_stretches || (Array.isArray(session.routine) ? session.routine.length : 1));
   }
 
   function sessionIndex(session) {
-    return Number(session.current_index || 0);
+    return Number(session.current_step ?? session.current_index ?? 0);
   }
 
   function setStageClass(kind) {
     if (!els.stage) return;
-    els.stage.classList.remove("is-boundary-check", "is-countdown", "is-preview", "is-active", "is-complete");
+    els.stage.classList.remove("is-boundary-check", "is-countdown", "is-preview", "is-rest", "is-active", "is-complete");
     if (kind) els.stage.classList.add(kind);
+  }
+
+  function slugifyGuidelineName(name) {
+    return String(name || "pose-guideline")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "pose-guideline";
+  }
+
+  function setGuidelineMedia(kind) {
+    show(els.restGuidelineVideo, kind === "video");
+    show(els.restGuidelineImage, kind === "image");
+    show(els.restGuidelinePlaceholder, kind === "placeholder");
+  }
+
+  function stopGuidelineVideo() {
+    const video = els.restGuidelineVideo;
+    if (!video) return;
+    video.pause();
+  }
+
+  function loadGuidelineMedia(stretchName) {
+    const slug = slugifyGuidelineName(stretchName);
+    if (slug === activeGuidelineSlug) return;
+
+    activeGuidelineSlug = slug;
+    guidelineLoadToken += 1;
+    const token = guidelineLoadToken;
+    const media = [
+      { kind: "video", path: `/static/PoseGuideline/${slug}.mp4` },
+      { kind: "video", path: `/static/PoseGuideline/${slug}.webm` },
+      { kind: "image", path: `/static/PoseGuideline/${slug}.jpg` },
+      { kind: "image", path: `/static/PoseGuideline/${slug}.jpeg` },
+      { kind: "image", path: `/static/PoseGuideline/${slug}.png` },
+      { kind: "image", path: `/static/PoseGuideline/${slug}.webp` },
+    ];
+    let index = 0;
+    setGuidelineMedia("placeholder");
+    stopGuidelineVideo();
+
+    function tryNext() {
+      if (token !== guidelineLoadToken) return;
+      const item = media[index];
+      index += 1;
+      if (!item) {
+        setGuidelineMedia("placeholder");
+        return;
+      }
+
+      if (item.kind === "video" && els.restGuidelineVideo) {
+        const video = els.restGuidelineVideo;
+        video.onloadeddata = () => {
+          if (token !== guidelineLoadToken) return;
+          setGuidelineMedia("video");
+          const playResult = video.play();
+          if (playResult && typeof playResult.catch === "function") playResult.catch(() => {});
+        };
+        video.onerror = tryNext;
+        video.src = item.path;
+        video.load();
+        return;
+      }
+
+      if (item.kind === "image" && els.restGuidelineImage) {
+        const image = els.restGuidelineImage;
+        image.onload = () => {
+          if (token !== guidelineLoadToken) return;
+          setGuidelineMedia("image");
+        };
+        image.onerror = tryNext;
+        image.src = item.path;
+        return;
+      }
+
+      tryNext();
+    }
+
+    tryNext();
+  }
+
+  function updateRestGuideline(session) {
+    const state = String(session.state || "IDLE");
+    if (state !== "REST" && state !== "READY") {
+      stopGuidelineVideo();
+      return;
+    }
+    const name = session.current_stretch || "Next stretch";
+    const isReady = state === "READY";
+    if (els.restGuidelineKicker) els.restGuidelineKicker.textContent = isReady ? "Get ready" : "Rest";
+    if (els.restGuidelineName) els.restGuidelineName.textContent = name;
+    if (els.restGuidelineCopy) {
+      els.restGuidelineCopy.textContent = isReady ? "Study the pose before the timer starts" : "Preview the next pose";
+    }
+    if (els.restGuidelineTimer) {
+      const seconds = isReady ? readyCountdown(session) : Math.max(0, Math.ceil(Number(session.remaining_time || 0)));
+      els.restGuidelineTimer.textContent = String(seconds);
+    }
+    loadGuidelineMedia(name);
   }
 
   function recordTotalScore(session) {
@@ -286,12 +396,15 @@
     const isCountdown = state === "READY" && !isPreview;
     const isComplete = state === "DONE" && index >= total - 1;
     const isPaused = Boolean(session.paused) && !isComplete;
+    const isRest = state === "REST" && !isPaused && !isComplete;
+    const isGuideline = (isCountdown || isRest) && !isPaused && !isComplete;
 
     if (boundaryPrecheckActive) {
       show(els.boundaryPrecheck, true);
       show(els.pausedOverlay, false);
       show(els.countdownOverlay, false);
       show(els.nextPreview, false);
+      show(els.restGuideline, false);
       show(els.completeOverlay, false);
       setStageClass("is-boundary-check");
       return;
@@ -299,9 +412,11 @@
 
     show(els.boundaryPrecheck, false);
     show(els.pausedOverlay, isPaused);
-    show(els.countdownOverlay, isCountdown);
+    show(els.countdownOverlay, false);
     show(els.nextPreview, isPreview);
+    show(els.restGuideline, isGuideline);
     show(els.completeOverlay, isComplete);
+    updateRestGuideline(session);
 
     if (els.countdownNumber) els.countdownNumber.textContent = String(count);
     if (els.countdownLabel) els.countdownLabel.textContent = session.current_stretch || "Get ready";
@@ -322,9 +437,9 @@
       setStageClass("is-complete");
     } else if (isPreview) {
       setStageClass("is-preview");
-    } else if (isCountdown) {
-      setStageClass("is-countdown");
-    } else if (state === "HOLD" || state === "GOOD") {
+    } else if (isGuideline) {
+      setStageClass("is-rest");
+    } else if (state === "HOLD" || state === "GOOD" || state === "REST") {
       setStageClass("is-active");
     } else {
       setStageClass("");
@@ -346,7 +461,8 @@
     if (els.stretchStep) els.stretchStep.textContent = `Stretch ${index + 1} of ${total}`;
     if (els.scoreValue) els.scoreValue.textContent = String(totalScore);
 
-    const progress = Math.max(0, Math.min(1, elapsed / STRETCH_SECONDS));
+    const segmentSeconds = Number(session.segment_seconds || STRETCH_SECONDS);
+    const progress = Math.max(0, Math.min(1, elapsed / segmentSeconds));
     if (els.progressBar) els.progressBar.style.width = `${Math.round(progress * 100)}%`;
 
     if (debugEnabled) {
@@ -378,7 +494,7 @@
     const state = String(session.state || "IDLE");
     const value = state === "READY"
       ? readyCountdown(session)
-      : Math.max(0, Math.min(100, Math.round((Number(session.elapsed_time || 0) / STRETCH_SECONDS) * 100)));
+      : Math.max(0, Math.min(100, Math.round((Number(session.elapsed_time || 0) / Number(session.segment_seconds || STRETCH_SECONDS)) * 100)));
     const payload = {
       page: "session",
       state,
@@ -507,9 +623,9 @@
 
     if (paused) {
       window.StretchAudio.pause("stretch");
-    } else if (state === "HOLD" || state === "GOOD") {
+    } else if (state === "READY" || state === "HOLD" || state === "GOOD" || state === "REST") {
       window.StretchAudio.playLoop("stretch");
-    } else {
+    } else if (state === "DONE" || state === "NO_CAMERA" || state === "WAITING_FOR_PHONE") {
       window.StretchAudio.stop("stretch");
     }
 
@@ -596,7 +712,7 @@
 
   function isSessionComplete(session) {
     if (!session) return false;
-    return String(session.state || "IDLE") === "DONE" && sessionIndex(session) >= sessionTotal(session) - 1;
+    return Boolean(session.complete) || (String(session.state || "IDLE") === "DONE" && sessionIndex(session) >= sessionTotal(session) - 1);
   }
 
   function normalizeHardwareAction(action) {
