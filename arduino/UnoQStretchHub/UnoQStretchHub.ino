@@ -3,7 +3,7 @@
 
   UNO Q Arduino sketch responsibilities:
   - Read hardware sensors and buttons.
-  - Receive Nano wearable IMU JSON.
+  - Receive Nano wearable IMU JSON over BLE or Serial1.
   - Receive camera pose flags from the UNO Q Linux/Python app.
   - Fuse those inputs into simple wellness guidance states.
   - Drive pixels, buzzer, optional LCD, and dashboard/debug JSON.
@@ -19,6 +19,7 @@
 
 #define USE_NANO_ON_SERIAL1 1
 #define USE_NANO_FORWARD_FROM_USB_SERIAL 1
+#define USE_NANO_ON_BLE 1
 
 #define USE_MODULINO_DISTANCE 1
 #define USE_MODULINO_PIXELS 1
@@ -52,13 +53,22 @@
   #else
     #define HAS_ARDUINOJSON 0
   #endif
+
+  #if __has_include(<ArduinoBLE.h>)
+    #include <ArduinoBLE.h>
+    #define HAS_ARDUINOBLE 1
+  #else
+    #define HAS_ARDUINOBLE 0
+  #endif
 #else
   #define HAS_ARDUINOJSON 0
+  #define HAS_ARDUINOBLE 0
 #endif
 
 const unsigned long USB_SERIAL_BAUD = 115200;
 const unsigned long NANO_SERIAL_BAUD = 115200;
 const unsigned long OUTPUT_INTERVAL_MS = 100;      // 10 Hz stretch_state JSON
+const unsigned long BLE_SCAN_RETRY_MS = 2500;
 const unsigned long DISTANCE_INTERVAL_MS = 100;
 const unsigned long NANO_STALE_MS = 1000;
 const unsigned long CAMERA_STALE_MS = 1000;
@@ -73,6 +83,10 @@ const float DISTANCE_NO_USER_MAX_CM = 300.0;
 const float DEFAULT_CAMERA_CONFIDENCE_MIN = 0.50;
 const float DEFAULT_STABILITY_THRESHOLD_DPS = 20.0;
 const float DEFAULT_TARGET_HOLD_SEC = 8.0;
+const char NANO_BLE_NAME[] = "YUEDMAI-NanoIMU";
+const char NANO_BLE_SERVICE_UUID[] = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const char NANO_BLE_IMU_CHAR_UUID[] = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const char NANO_BLE_COMMAND_CHAR_UUID[] = "19b10002-e8f2-537e-4f6c-d104768a1214";
 
 // Set to 1 if your installed distance API returns millimeters instead of centimeters.
 #define MODULINO_DISTANCE_RETURNS_MM 0
@@ -124,6 +138,9 @@ DistanceData distanceData = {false, false, 0.0, 0};
 bool nanoOk = false;
 bool cameraOk = false;
 bool distanceOk = false;
+bool nanoBleHealthy = false;
+bool nanoBleConnected = false;
+bool nanoBleSubscribed = false;
 bool sessionStarted = false;
 bool sessionPaused = false;
 bool stepGood = false;
@@ -146,6 +163,8 @@ unsigned long candidateSinceMs = 0;
 unsigned long lastOutputMs = 0;
 unsigned long lastDistanceMs = 0;
 unsigned long lastHoldTickMs = 0;
+unsigned long lastBleScanMs = 0;
+unsigned long lastBleReadMs = 0;
 unsigned long badFormSinceMs = 0;
 unsigned long goodSinceMs = 0;
 unsigned long holdElapsedMs = 0;
@@ -154,6 +173,7 @@ char usbLine[512];
 size_t usbLineLength = 0;
 char nanoLine[512];
 size_t nanoLineLength = 0;
+char nanoBleLine[512];
 
 #if HAS_MODULINO_LIBRARY
 ModulinoDistance modulinoDistance;
@@ -165,6 +185,12 @@ ModulinoButtons modulinoButtons;
 bool pixelsAvailable = false;
 bool buzzerAvailable = false;
 bool buttonsAvailable = false;
+
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+BLEDevice nanoBlePeripheral;
+BLECharacteristic nanoBleImuCharacteristic;
+BLECharacteristic nanoBleCommandCharacteristic;
+#endif
 
 const char *stateName(FinalState state) {
   switch (state) {
@@ -523,10 +549,22 @@ void nextStep() {
   goodSinceMs = millis();
 }
 
+void sendNanoBleCommand(const char *command) {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  if (!nanoBleConnected || !nanoBleCommandCharacteristic) {
+    return;
+  }
+  nanoBleCommandCharacteristic.writeValue((const uint8_t *)command, strlen(command));
+#else
+  (void)command;
+#endif
+}
+
 void sendNanoCalibrationCommand() {
 #if USE_NANO_ON_SERIAL1
   Serial1.println("CALIBRATE");
 #endif
+  sendNanoBleCommand("CALIBRATE");
   Serial.println("# OK CALIBRATE_NANO requested");
 }
 
@@ -763,6 +801,141 @@ void parseSerial() {
 #endif
 }
 
+void startNanoBleScan() {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  BLE.stopScan();
+  BLE.scanForUuid(NANO_BLE_SERVICE_UUID);
+  lastBleScanMs = millis();
+  Serial.println("# BLE scanning for Nano IMU");
+#endif
+}
+
+void initNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  if (!BLE.begin()) {
+    nanoBleHealthy = false;
+    Serial.println("# WARN ArduinoBLE begin failed; Nano BLE disabled");
+    return;
+  }
+  nanoBleHealthy = true;
+  startNanoBleScan();
+#else
+  nanoBleHealthy = false;
+  Serial.println("# WARN ArduinoBLE library not installed; Nano BLE disabled");
+#endif
+}
+
+void disconnectNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  if (nanoBlePeripheral && nanoBlePeripheral.connected()) {
+    nanoBlePeripheral.disconnect();
+  }
+  nanoBleConnected = false;
+  nanoBleSubscribed = false;
+  startNanoBleScan();
+#endif
+}
+
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+bool connectNanoBle(BLEDevice peripheral) {
+  Serial.print("# BLE Nano candidate ");
+  Serial.println(peripheral.address());
+  BLE.stopScan();
+
+  if (!peripheral.connect()) {
+    Serial.println("# WARN BLE Nano connect failed");
+    startNanoBleScan();
+    return false;
+  }
+
+  if (!peripheral.discoverService(NANO_BLE_SERVICE_UUID)) {
+    Serial.println("# WARN BLE Nano service discovery failed");
+    peripheral.disconnect();
+    startNanoBleScan();
+    return false;
+  }
+
+  BLECharacteristic imuChar = peripheral.characteristic(NANO_BLE_IMU_CHAR_UUID);
+  if (!imuChar) {
+    Serial.println("# WARN BLE Nano IMU characteristic missing");
+    peripheral.disconnect();
+    startNanoBleScan();
+    return false;
+  }
+
+  nanoBlePeripheral = peripheral;
+  nanoBleImuCharacteristic = imuChar;
+  nanoBleCommandCharacteristic = peripheral.characteristic(NANO_BLE_COMMAND_CHAR_UUID);
+  nanoBleSubscribed = nanoBleImuCharacteristic.canSubscribe() && nanoBleImuCharacteristic.subscribe();
+  nanoBleConnected = true;
+  lastBleReadMs = 0;
+
+  Serial.print("# BLE Nano connected; notify=");
+  Serial.println(nanoBleSubscribed ? "yes" : "no");
+  return true;
+}
+#endif
+
+void readNanoBlePacket() {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  if (!nanoBleConnected || !nanoBleImuCharacteristic) {
+    return;
+  }
+
+  int valueLength = nanoBleImuCharacteristic.valueLength();
+  if (valueLength <= 0) {
+    return;
+  }
+
+  int readLength = min(valueLength, (int)sizeof(nanoBleLine) - 1);
+  int actualLength = nanoBleImuCharacteristic.readValue((uint8_t *)nanoBleLine, readLength);
+  if (actualLength <= 0) {
+    return;
+  }
+
+  nanoBleLine[actualLength] = '\0';
+  handleInputLine(nanoBleLine, true);
+#endif
+}
+
+void updateNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_ON_BLE
+  if (!nanoBleHealthy) {
+    return;
+  }
+
+  BLE.poll();
+
+  if (nanoBleConnected) {
+    if (!nanoBlePeripheral.connected()) {
+      Serial.println("# BLE Nano disconnected");
+      disconnectNanoBle();
+      return;
+    }
+
+    if (nanoBleSubscribed) {
+      if (nanoBleImuCharacteristic.valueUpdated()) {
+        readNanoBlePacket();
+      }
+    } else if (millis() - lastBleReadMs >= OUTPUT_INTERVAL_MS) {
+      lastBleReadMs = millis();
+      readNanoBlePacket();
+    }
+    return;
+  }
+
+  BLEDevice peripheral = BLE.available();
+  if (peripheral) {
+    connectNanoBle(peripheral);
+    return;
+  }
+
+  if (millis() - lastBleScanMs >= BLE_SCAN_RETRY_MS) {
+    startNanoBleScan();
+  }
+#endif
+}
+
 void initDistanceSensor() {
   if (distanceMockActive()) {
     distanceData.available = true;
@@ -937,6 +1110,7 @@ void readButtons() {
 
 void readInputs() {
   parseSerial();
+  updateNanoBle();
   updateDistance();
   readButtons();
 }
@@ -962,6 +1136,7 @@ void setup() {
   Serial.println("# Camera inference is external; send camera_pose JSON over USB Serial.");
 
   initFeedback();
+  initNanoBle();
   initDistanceSensor();
   initDisplay();
   resetSession();

@@ -9,6 +9,11 @@
   - Use IMU_BACKEND_LSM9DS1 for original Nano 33 BLE Sense-style boards.
   - Use IMU_BACKEND_BMI270 for Rev2-style boards.
   - Do not enable both at once.
+
+  BLE:
+  - Advertises as YUEDMAI-NanoIMU.
+  - Notifies a compact 9-axis IMU packet for UNO Q scoring/dashboard use.
+  - Keeps USB Serial JSON output for debugging and the browser dashboard.
 */
 
 #define IMU_BACKEND_LSM9DS1
@@ -21,6 +26,7 @@
 #define USE_BAROMETER_SENSOR 1
 #define USE_ENVIRONMENT_SENSOR 0  // Nano 33 BLE Sense Lite does not include temp/humidity.
 #define USE_PDM_MICROPHONE 1
+#define USE_BLE_IMU 1
 
 // Optional for non-Lite boards only. Original Sense uses HTS221; Rev2 uses HS300x.
 #define ENV_BACKEND_HTS221
@@ -82,17 +88,26 @@
   #else
     #define HAS_PDM_LIBRARY 0
   #endif
+
+  #if __has_include(<ArduinoBLE.h>)
+    #include <ArduinoBLE.h>
+    #define HAS_ARDUINOBLE 1
+  #else
+    #define HAS_ARDUINOBLE 0
+  #endif
 #else
   #define HAS_APDS9960_LIBRARY 0
   #define HAS_LPS22HB_LIBRARY 0
   #define HAS_HTS221_LIBRARY 0
   #define HAS_HS300X_LIBRARY 0
   #define HAS_PDM_LIBRARY 0
+  #define HAS_ARDUINOBLE 0
 #endif
 
 const unsigned long SERIAL_BAUD = 115200;
 const unsigned long OUTPUT_INTERVAL_MS = 50;       // 20 Hz JSON stream
 const unsigned long FULL_OUTPUT_INTERVAL_MS = 100; // 10 Hz rich dashboard stream
+const unsigned long BLE_OUTPUT_INTERVAL_MS = 100;  // 10 Hz compact wearable stream
 const unsigned long CALIBRATION_DURATION_MS = 2000;
 const unsigned long IMU_STALE_MS = 1000;
 const unsigned long HOLD_STABLE_DWELL_MS = 300;
@@ -107,6 +122,10 @@ const int PDM_GAIN = 30;
 const int PDM_BUFFER_BYTES = 512;
 const float MIC_LEVEL_FLOOR_DBFS = -70.0;
 const float MIC_LEVEL_CEILING_DBFS = -20.0;
+const char BLE_DEVICE_NAME[] = "YUEDMAI-NanoIMU";
+const char BLE_SERVICE_UUID[] = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const char BLE_IMU_CHAR_UUID[] = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const char BLE_COMMAND_CHAR_UUID[] = "19b10002-e8f2-537e-4f6c-d104768a1214";
 
 float armRaisedThresholdDeg = 55.0;
 float stabilityThresholdDps = 20.0;
@@ -180,10 +199,12 @@ bool apdsHealthy = false;
 bool baroHealthy = false;
 bool envHealthy = false;
 bool micHealthy = false;
+bool bleHealthy = false;
 
 unsigned long calibrationStartedMs = 0;
 unsigned long lastImuReadMs = 0;
 unsigned long lastOutputMs = 0;
+unsigned long lastBleOutputMs = 0;
 unsigned long stableCandidateSinceMs = 0;
 unsigned long lastMagReadMs = 0;
 unsigned long lastApdsReadMs = 0;
@@ -201,6 +222,12 @@ char gestureName[12] = "none";
 short pdmSampleBuffer[256];
 volatile int pdmSamplesRead = 0;
 volatile bool pdmBufferReady = false;
+#endif
+
+#if HAS_ARDUINOBLE && USE_BLE_IMU
+BLEService stretchImuService(BLE_SERVICE_UUID);
+BLEStringCharacteristic imuCharacteristic(BLE_IMU_CHAR_UUID, BLERead | BLENotify, 220);
+BLEStringCharacteristic commandCharacteristic(BLE_COMMAND_CHAR_UUID, BLEWrite, 96);
 #endif
 
 const char *nanoStateName(NanoState state) {
@@ -283,6 +310,78 @@ void beginCalibration() {
   nanoState = NANO_CALIBRATING;
   stableCandidateSinceMs = 0;
   Serial.println("# Nano calibration started. Keep the forearm relaxed in the baseline position.");
+}
+
+void buildCompactImuJson(char *buffer, size_t size) {
+  snprintf(
+    buffer,
+    size,
+    "{\"type\":\"nano_imu\",\"t\":%lu,\"relative_pitch\":%.1f,\"gyro_mag\":%.1f,\"stability_score\":%.0f,\"arm_raised\":%s,\"stable\":%s,\"state\":\"%s\",\"heading_deg\":%.1f,\"mag_mag\":%.1f,\"mag_ok\":%s}",
+    millis(),
+    relativePitchDeg,
+    gyroMagDps,
+    stabilityScore,
+    armRaised ? "true" : "false",
+    stableHold ? "true" : "false",
+    nanoStateName(nanoState),
+    magHeadingDeg,
+    magMagnitudeUt,
+    haveMag ? "true" : "false"
+  );
+}
+
+void initBle() {
+#if HAS_ARDUINOBLE && USE_BLE_IMU
+  if (!BLE.begin()) {
+    bleHealthy = false;
+    Serial.println("# WARN ArduinoBLE begin failed; BLE IMU telemetry disabled");
+    return;
+  }
+
+  BLE.setLocalName(BLE_DEVICE_NAME);
+  BLE.setDeviceName(BLE_DEVICE_NAME);
+  BLE.setAdvertisedService(stretchImuService);
+  stretchImuService.addCharacteristic(imuCharacteristic);
+  stretchImuService.addCharacteristic(commandCharacteristic);
+  BLE.addService(stretchImuService);
+
+  char payload[220];
+  buildCompactImuJson(payload, sizeof(payload));
+  imuCharacteristic.writeValue(payload);
+
+  BLE.advertise();
+  bleHealthy = true;
+  Serial.print("# BLE IMU advertising as ");
+  Serial.println(BLE_DEVICE_NAME);
+#else
+  bleHealthy = false;
+  Serial.println("# WARN ArduinoBLE library not installed; BLE IMU telemetry disabled");
+#endif
+}
+
+void updateBle() {
+#if HAS_ARDUINOBLE && USE_BLE_IMU
+  if (!bleHealthy) return;
+
+  BLE.poll();
+
+  if (commandCharacteristic.written()) {
+    String command = commandCharacteristic.value();
+    char commandLine[96];
+    command.toCharArray(commandLine, sizeof(commandLine));
+    processCommand(commandLine);
+  }
+
+  unsigned long now = millis();
+  if (now - lastBleOutputMs < BLE_OUTPUT_INTERVAL_MS) {
+    return;
+  }
+  lastBleOutputMs = now;
+
+  char payload[220];
+  buildCompactImuJson(payload, sizeof(payload));
+  imuCharacteristic.writeValue(payload);
+#endif
 }
 
 #if HAS_PDM_LIBRARY && USE_PDM_MICROPHONE
@@ -865,11 +964,13 @@ void setup() {
   }
 
   initOptionalSensors();
+  initBle();
 }
 
 void loop() {
   parseSerialCommands();
   updateImu();
   updateOptionalSensors();
+  updateBle();
   outputStatus(false);
 }

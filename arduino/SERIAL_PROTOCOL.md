@@ -2,7 +2,39 @@
 
 All firmware messages are newline-delimited. Use `115200` baud for both sketches. Lines starting with `#` are human-readable logs or acknowledgements and can be ignored by receivers.
 
-## Nano Output
+## Nano BLE Output
+
+Direction: Nano wearable to UNO Q.
+
+The Nano advertises as `YUEDMAI-NanoIMU` and exposes compact 9-axis IMU telemetry for scoring/dashboard use.
+
+```text
+Service UUID:        19b10000-e8f2-537e-4f6c-d104768a1214
+IMU notify UUID:    19b10001-e8f2-537e-4f6c-d104768a1214
+Command write UUID: 19b10002-e8f2-537e-4f6c-d104768a1214
+```
+
+BLE compact payload:
+
+```json
+{
+  "type": "nano_imu",
+  "t": 12345,
+  "relative_pitch": 58.3,
+  "gyro_mag": 8.4,
+  "stability_score": 61,
+  "arm_raised": true,
+  "stable": true,
+  "state": "NANO_HOLD_STABLE",
+  "heading_deg": 346.0,
+  "mag_mag": 42.2,
+  "mag_ok": true
+}
+```
+
+UNO Q subscribes to the notify characteristic and feeds the same `nano_imu` parser used by Serial1. `CALIBRATE_NANO` is forwarded to the BLE command characteristic as `CALIBRATE`.
+
+## Nano Serial Output
 
 Direction: Nano wearable to UNO Q or Linux/Python app.
 
