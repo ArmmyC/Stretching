@@ -54,14 +54,14 @@
 #endif
 
 #if defined(__has_include)
-  #if __has_include(<Arduino_APDS9960.h>)
+  #if USE_APDS9960_SENSOR
     #include <Arduino_APDS9960.h>
     #define HAS_APDS9960_LIBRARY 1
   #else
     #define HAS_APDS9960_LIBRARY 0
   #endif
 
-  #if __has_include(<Arduino_LPS22HB.h>)
+  #if USE_BAROMETER_SENSOR
     #include <Arduino_LPS22HB.h>
     #define HAS_LPS22HB_LIBRARY 1
   #else
@@ -82,14 +82,14 @@
     #define HAS_HS300X_LIBRARY 0
   #endif
 
-  #if __has_include(<PDM.h>)
+  #if USE_PDM_MICROPHONE
     #include <PDM.h>
     #define HAS_PDM_LIBRARY 1
   #else
     #define HAS_PDM_LIBRARY 0
   #endif
 
-  #if __has_include(<ArduinoBLE.h>)
+  #if USE_BLE_IMU
     #include <ArduinoBLE.h>
     #define HAS_ARDUINOBLE 1
   #else
