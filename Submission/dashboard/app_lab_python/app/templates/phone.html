@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Phone Camera - YUEDMAI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="phone-shell">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-name">YuedMai</div>
+    </div>
+
+    <section class="phone-card">
+      <span class="badge info phone-status-badge">
+        <span class="pulse"></span>
+        <span id="status">Requesting camera...</span>
+      </span>
+      <h1>Phone Camera Connected</h1>
+      <p>Place your phone facing your body.<br>Keep this screen open.</p>
+
+      <div class="phone-preview">
+        <video id="preview" autoplay playsinline muted></video>
+      </div>
+
+      <button class="btn btn-primary" id="restart" type="button">Restart Camera</button>
+      <p class="phone-helper">The big screen at the station is your main view. This phone just sends video.</p>
+      <canvas id="canvas" width="640" height="480"></canvas>
+    </section>
+  </main>
+
+  <script>
+    const targetFps = {{ target_fps }};
+    const jpegQuality = {{ jpeg_quality }};
+    const video = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const statusEl = document.getElementById("status");
+    const restartButton = document.getElementById("restart");
+    let stream = null;
+    let socket = null;
+    let timer = null;
+    let sending = false;
+
+    function setStatus(text, ok = true) {
+      statusEl.textContent = text;
+      statusEl.closest(".badge").className = ok ? "badge info phone-status-badge" : "badge warn phone-status-badge";
+    }
+
+    function socketUrl() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}/ws/phone-frame`;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API unavailable. Use HTTPS or localhost.");
+      }
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
+      video.srcObject = stream;
+      await video.play();
+    }
+
+    function connectSocket() {
+      socket = new WebSocket(socketUrl());
+      socket.binaryType = "arraybuffer";
+      socket.onopen = () => setStatus("Phone Camera Connected");
+      socket.onclose = () => {
+        setStatus("Disconnected. Reconnecting...", false);
+        window.setTimeout(connectSocket, 1000);
+      };
+      socket.onerror = () => setStatus("Connection error", false);
+    }
+
+    function sendFrame() {
+      if (!socket || socket.readyState !== WebSocket.OPEN || sending || !video.videoWidth) {
+        return;
+      }
+      if (socket.bufferedAmount > 2000000) {
+        return;
+      }
+      sending = true;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(async (blob) => {
+        try {
+          if (blob && socket.readyState === WebSocket.OPEN) {
+            socket.send(await blob.arrayBuffer());
+          }
+        } finally {
+          sending = false;
+        }
+      }, "image/jpeg", jpegQuality);
+    }
+
+    async function startAll() {
+      try {
+        setStatus("Opening camera...");
+        await startCamera();
+        connectSocket();
+        if (timer) window.clearInterval(timer);
+        timer = window.setInterval(sendFrame, Math.round(1000 / targetFps));
+      } catch (error) {
+        setStatus(`Camera failed: ${error.message}`, false);
+      }
+    }
+
+    restartButton.addEventListener("click", startAll);
+    startAll();
+  </script>
+</body>
+</html>
