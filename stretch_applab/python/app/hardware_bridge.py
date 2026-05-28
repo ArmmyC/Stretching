@@ -7,7 +7,7 @@ import time
 from collections import deque
 from typing import Any
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,13 @@ class HardwareBridge:
             await websocket.send_json({"type": "hardware_status", "hardware": self.status()})
             while True:
                 event = await queue.get()
-                await websocket.send_json(event)
+                try:
+                    await websocket.send_json(event)
+                except WebSocketDisconnect:
+                    break
+                except Exception:
+                    logger.info("Hardware WebSocket client disconnected while sending event.")
+                    break
         finally:
             self._clients.discard(queue)
 
@@ -158,6 +164,17 @@ class HardwareBridge:
         return nano
 
     def _bridge_hardware_event(self, action: str, value: int = 0) -> str:
+        if isinstance(action, str) and action.strip().startswith("{"):
+            try:
+                payload = json.loads(action)
+                self.publish(
+                    str(payload.get("action") or ""),
+                    value=int(float(payload.get("value") or 0)),
+                    source="uno_q",
+                )
+                return "ok"
+            except (TypeError, ValueError, json.JSONDecodeError):
+                logger.warning("Invalid hardware_event payload: %s", action[:160])
         self.publish(action, value=value, source="uno_q")
         return "ok"
 
@@ -229,6 +246,11 @@ class HardwareBridge:
         cleaned: dict[str, Any] = {
             "valid": bool(raw.get("valid", True)),
             "state": str(raw.get("state") or "")[:32],
+            "ax": maybe_float("ax"),
+            "ay": maybe_float("ay"),
+            "az": maybe_float("az"),
+            "roll": maybe_float("roll"),
+            "pitch": maybe_float("pitch"),
             "relative_pitch": maybe_float("relative_pitch"),
             "gyro_mag": maybe_float("gyro_mag"),
             "stability_score": maybe_float("stability_score"),

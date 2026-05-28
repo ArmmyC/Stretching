@@ -22,6 +22,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.hardware_bridge import hardware_bridge
 from app import inference
+from app.nano_ble import nano_ble_manager
 from app.session_manager import SessionManager
 from app.source_manager import SourceManager
 from app.utils import PROJECT_ROOT, build_base_url, log_startup_details, make_qr_png_bytes, setup_logging
@@ -129,11 +130,13 @@ async def startup() -> None:
     log_startup_details(source_manager.force_mode, BASE_URL)
     logger.info("QR URL generated: %s", PHONE_URL)
     hardware_bridge.start()
+    nano_ble_manager.start(hardware_bridge)
     source_manager.start()
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
+    await nano_ble_manager.stop()
     source_manager.stop()
     logger.info("YUEDMAI app shutdown")
 
@@ -281,6 +284,16 @@ async def api_hardware() -> dict[str, Any]:
     return {"hardware": hardware_bridge.status()}
 
 
+@app.post("/api/nano_imu")
+async def api_nano_imu(request: Request) -> dict[str, Any]:
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    event = hardware_bridge.publish_nano_imu(payload, source="http")
+    return {"ok": True, "event": event, "nano_imu": hardware_bridge.latest_nano_imu()}
+
+
 @app.post("/api/hardware/feedback")
 async def api_hardware_feedback(request: Request) -> dict[str, Any]:
     try:
@@ -385,6 +398,7 @@ def full_status(debug: bool = False) -> dict[str, Any]:
         "pose": pose,
         "setup": setup,
         "hardware": hardware_bridge.status(),
+        "nano_ble": nano_ble_manager.status(),
         "nano_imu": nano_imu,
         "qr_url": PHONE_URL,
         "captures": capture_store.status(BASE_URL),

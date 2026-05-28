@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YuedMai Stretch Results</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="dashboard">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand">YuedMai</div>
+          <p class="eyebrow">Stretch Results</p>
+          <h1 id="pageTitle">Stretch Progress Dashboard</h1>
+        </div>
+        <div class="header-actions">
+          <div class="week-pill">
+            <span data-icon="calendar"></span>
+            <div>
+              <strong>Tracking Period</strong>
+              <span id="weekRange">May 24 - May 28, 2026</span>
+            </div>
+          </div>
+          <div class="week-pill">
+            <span data-icon="pulse"></span>
+            <div>
+              <strong>Data Source</strong>
+              <span id="dataSourceLabel">Sensor data</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero-panel" aria-label="Latest stretch summary">
+        <div class="hero-copy">
+          <p class="hero-kicker">Active Recovery Mode</p>
+          <h2 id="heroStretchName">Hamstring Stretch</h2>
+          <p id="heroSummary">Latest session summary from your stretch sensor data.</p>
+          <div class="stretch-picker" aria-label="Stretch type">
+            <label for="stretchSelect">Choose stretch</label>
+            <select id="stretchSelect">
+              <option value="hamstring">Hamstring</option>
+              <option value="neck">Neck</option>
+              <option value="hipFlexor">Hip Flexor</option>
+              <option value="chest">Chest</option>
+              <option value="shoulder">Shoulder</option>
+            </select>
+          </div>
+        </div>
+        <div class="hero-score">
+          <div class="score-ring" id="heroScoreRing">
+            <div>
+              <strong id="heroScore">0</strong>
+              <span>/100</span>
+            </div>
+          </div>
+          <p id="heroScoreLabel">Day 5 Score</p>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <span>Good Hold</span>
+            <strong id="heroHold">0.0s</strong>
+          </div>
+          <div>
+            <span>Stretch Angle</span>
+            <strong id="heroAngle">0.0 deg</strong>
+          </div>
+          <div>
+            <span>Steadiness</span>
+            <strong id="heroSteadiness">0.0%</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Best metrics">
+        <article class="metric-card">
+          <span class="metric-icon" data-icon="medal"></span>
+          <div>
+            <p>Best Overall Stretch Score</p>
+            <strong><span id="bestScore">0</span><small>/100</small></strong>
+            <em id="bestScoreDay">Day 5 Best</em>
+          </div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon" data-icon="clock"></span>
+          <div>
+            <p>Best Good Hold Time</p>
+            <strong><span id="bestHold">0.0</span><small>s</small></strong>
+            <em id="bestHoldDay">Day 5 Best</em>
+          </div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon" data-icon="angle"></span>
+          <div>
+            <p>Best Stretch Angle</p>
+            <strong><span id="bestDepth">0.0</span><small>deg</small></strong>
+            <em id="bestDepthDay">Day 5 Best</em>
+          </div>
+        </article>
+        <article class="metric-card">
+          <span class="metric-icon" data-icon="shield"></span>
+          <div>
+            <p>Best Steadiness</p>
+            <strong><span id="bestStability">0.0</span><small>%</small></strong>
+            <em id="bestStabilityDay">Day 5 Best</em>
+          </div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel progress-panel">
+          <div class="panel-heading">
+            <h2>5-Day Progress</h2>
+            <div class="chart-legend" id="legend"></div>
+          </div>
+          <div class="chart-wrap">
+            <svg id="progressChart" role="img" aria-label="5-day progress line chart"></svg>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead id="metricTableHead"></thead>
+              <tbody id="metricTableBody"></tbody>
+            </table>
+          </div>
+          <p class="note">Higher is better for stretch angle, hold time, steadiness, and score. Lower fastest movement means the stretch was smoother.</p>
+        </article>
+
+        <aside class="right-column">
+          <article class="panel interpretation-panel">
+            <div class="panel-title-row">
+              <span class="mini-icon" data-icon="bulb"></span>
+              <h2>Latest Result</h2>
+            </div>
+            <ul id="insights"></ul>
+          </article>
+
+          <div class="split-row">
+            <article class="panel score-panel">
+              <h2>Score Breakdown</h2>
+              <div class="score-layout">
+                <svg id="donutChart" role="img" aria-label="Score breakdown donut chart"></svg>
+                <div class="breakdown-list" id="breakdownList"></div>
+              </div>
+              <div class="score-total">
+                <span id="latestScoreLabel">Latest Score</span>
+                <strong><span id="dayFiveScore">0</span><small>/100</small></strong>
+              </div>
+            </article>
+
+            <article class="panel calculation-panel">
+              <div class="panel-title-row">
+                <span class="mini-icon" data-icon="pulse"></span>
+                <h2>How This Score Is Calculated</h2>
+              </div>
+              <ul id="calculationList"></ul>
+            </article>
+          </div>
+        </aside>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel rules-panel">
+          <div class="panel-title-row">
+            <span class="mini-icon" data-icon="clipboard"></span>
+            <h2>Coach Rules</h2>
+          </div>
+          <div id="rulesList" class="rules-list"></div>
+        </article>
+
+        <article class="panel recommendations-panel">
+          <div class="panel-title-row">
+            <span class="mini-icon" data-icon="star"></span>
+            <h2>Next Steps</h2>
+          </div>
+          <ol id="recommendations"></ol>
+        </article>
+
+        <article class="gamify-panel">
+          <div class="game-stat">
+            <span data-icon="flame"></span>
+            <small>Stretch Streak</small>
+            <strong id="streakDays">5 days</strong>
+            <em id="streakCaption">Keep it up!</em>
+          </div>
+          <div class="game-stat level">
+            <span data-icon="hex"></span>
+            <small>Level</small>
+            <strong id="levelMark">L2</strong>
+            <div class="xp-bar"><span id="xpBarFill"></span></div>
+            <em id="xpText">420 / 800 XP</em>
+          </div>
+          <div class="badge-card">
+            <div class="badge-art">
+              <span data-icon="mountain"></span>
+            </div>
+            <strong id="badgeName">Hamstring Explorer</strong>
+            <div class="dots" id="streakDots"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

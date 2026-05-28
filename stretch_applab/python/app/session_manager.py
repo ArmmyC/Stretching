@@ -39,6 +39,13 @@ ROUTINES = {
     "full": ["Shoulder stretch", "Hip opener", "Hamstring stretch"],
 }
 
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
 INSTRUCTIONS = {
     "IDLE": "Press Start",
     "READY": "Get ready",
@@ -225,12 +232,20 @@ class SessionManager:
                     form_multiplier += 0.04
 
         if nano_metrics and nano_metrics.get("fresh"):
-            nano_arm_raised = bool(nano_metrics.get("arm_raised"))
+            az = _safe_float(nano_metrics.get("az"))
+            roll = _safe_float(nano_metrics.get("roll"))
+            top_raise = az is not None and az <= -0.55
+            side_raise = roll is not None and 55.0 <= abs(roll) <= 125.0
+            nano_arm_raised = bool(nano_metrics.get("arm_raised")) or top_raise or side_raise
             nano_stable = bool(nano_metrics.get("stable"))
-            stability_score = float(nano_metrics.get("stability_score") or 0.0)
-            gyro_mag = float(nano_metrics.get("gyro_mag") or 0.0)
+            stability_score = _safe_float(nano_metrics.get("stability_score")) or 0.0
+            gyro_mag = _safe_float(nano_metrics.get("gyro_mag")) or 0.0
             if isinstance(stretch, StretchDefinition) and stretch.needs_arm_raised and not nano_arm_raised:
                 form_multiplier -= 0.18
+            if isinstance(stretch, StretchDefinition) and stretch.needs_arm_raised and top_raise:
+                form_multiplier += 0.04
+            if isinstance(stretch, StretchDefinition) and stretch.score_hint in {"controlled_rotation", "overhead_control"} and side_raise:
+                form_multiplier += 0.03
             if state in {"HOLD", "GOOD"}:
                 if nano_stable:
                     form_multiplier += 0.06

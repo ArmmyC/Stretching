@@ -12,7 +12,10 @@
 
 #include <Arduino.h>
 
-#define USE_NANO_BLE_IMU 1
+// Keep this off for the App Lab control sketch unless Nano BLE has been
+// verified. Continuous BLE central scanning can stall RouterBridge/button
+// handling on UNO Q, which breaks kiosk navigation.
+#define USE_NANO_BLE_IMU 0
 
 #if defined(__has_include)
   #if __has_include(<Arduino_RouterBridge.h>)
@@ -48,7 +51,8 @@ const unsigned long INPUT_POLL_MS = 25;
 const unsigned long LONG_PRESS_MS = 850;
 const unsigned long FEEDBACK_REFRESH_MS = 80;
 const unsigned long BUTTON_DEBUG_MS = 1000;
-const unsigned long BLE_SCAN_RETRY_MS = 2500;
+const unsigned long BLE_POLL_INTERVAL_MS = 250;
+const unsigned long BLE_SCAN_RETRY_MS = 10000;
 const unsigned long SERIAL_BAUD = 115200;
 const int PIXEL_COUNT = 8;
 const char NANO_BLE_NAME[] = "YUEDMAI-NanoIMU";
@@ -95,6 +99,7 @@ unsigned long lastFeedbackMs = 0;
 unsigned long lastButtonDebugMs = 0;
 unsigned long lastBleScanMs = 0;
 unsigned long lastBleReadMs = 0;
+unsigned long lastBlePollMs = 0;
 char nanoBleLine[256];
 
 const char *buttonAction(int index) {
@@ -116,6 +121,7 @@ const char *buttonLongAction(int index) {
 }
 
 void notifyAction(const char *action, int value = 0) {
+  String payload = String("{\"action\":\"") + action + "\",\"value\":" + String(value) + "}";
   Serial.print("# notify hardware_event action=");
   Serial.print(action);
   Serial.print(" value=");
@@ -123,12 +129,10 @@ void notifyAction(const char *action, int value = 0) {
   Serial.print(" bridge=");
   Serial.println(HAS_ROUTER_BRIDGE ? "yes" : "no");
 #if HAS_ROUTER_BRIDGE
-  Bridge.notify("hardware_event", action, value);
+  Bridge.notify("hardware_event", payload);
 #else
   Serial.print("# hardware_event ");
-  Serial.print(action);
-  Serial.print(" ");
-  Serial.println(value);
+  Serial.println(payload);
 #endif
 }
 
@@ -150,9 +154,9 @@ void notifyNanoImu(const char *payload) {
 void startNanoBleScan() {
 #if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
   BLE.stopScan();
-  BLE.scanForUuid(NANO_BLE_SERVICE_UUID);
+  BLE.scanForName(NANO_BLE_NAME);
   lastBleScanMs = millis();
-  Serial.println("# BLE scanning for Nano IMU");
+  Serial.println("# BLE scanning for Nano IMU by name");
 #endif
 }
 
@@ -186,6 +190,11 @@ bool connectAvailableNanoBle() {
 #if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
   BLEDevice peripheral = BLE.available();
   if (!peripheral) {
+    return false;
+  }
+
+  String localName = peripheral.localName();
+  if (localName != NANO_BLE_NAME) {
     return false;
   }
 
@@ -250,6 +259,12 @@ void updateNanoBle() {
 #if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
   if (!nanoBleHealthy) return;
 
+  unsigned long now = millis();
+  if (now - lastBlePollMs < BLE_POLL_INTERVAL_MS) {
+    return;
+  }
+  lastBlePollMs = now;
+
   BLE.poll();
 
   if (nanoBleConnected) {
@@ -263,8 +278,8 @@ void updateNanoBle() {
       if (nanoBleImuCharacteristic.valueUpdated()) {
         readNanoBlePacket();
       }
-    } else if (millis() - lastBleReadMs >= FEEDBACK_REFRESH_MS) {
-      lastBleReadMs = millis();
+    } else if (now - lastBleReadMs >= BLE_POLL_INTERVAL_MS) {
+      lastBleReadMs = now;
       readNanoBlePacket();
     }
     return;
@@ -274,7 +289,7 @@ void updateNanoBle() {
     return;
   }
 
-  if (millis() - lastBleScanMs >= BLE_SCAN_RETRY_MS) {
+  if (now - lastBleScanMs >= BLE_SCAN_RETRY_MS) {
     startNanoBleScan();
   }
 #endif
@@ -564,11 +579,12 @@ void loop() {
     lastInputMs = now;
     readKnob();
     readButtons();
-    updateNanoBle();
   }
 
   if (now - lastFeedbackMs >= FEEDBACK_REFRESH_MS) {
     lastFeedbackMs = now;
     updatePixels();
   }
+
+  updateNanoBle();
 }

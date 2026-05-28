@@ -316,17 +316,16 @@ void buildCompactImuJson(char *buffer, size_t size) {
   snprintf(
     buffer,
     size,
-    "{\"type\":\"nano_imu\",\"t\":%lu,\"relative_pitch\":%.1f,\"gyro_mag\":%.1f,\"stability_score\":%.0f,\"arm_raised\":%s,\"stable\":%s,\"state\":\"%s\",\"heading_deg\":%.1f,\"mag_mag\":%.1f,\"mag_ok\":%s}",
+    "{\"type\":\"nano_imu\",\"t\":%lu,\"az\":%.2f,\"roll\":%.1f,\"relative_pitch\":%.1f,\"gyro_mag\":%.1f,\"stability_score\":%.0f,\"arm_raised\":%s,\"stable\":%s,\"state\":\"%s\"}",
     millis(),
+    az,
+    rollDeg,
     relativePitchDeg,
     gyroMagDps,
     stabilityScore,
     armRaised ? "true" : "false",
     stableHold ? "true" : "false",
-    nanoStateName(nanoState),
-    magHeadingDeg,
-    magMagnitudeUt,
-    haveMag ? "true" : "false"
+    nanoStateName(nanoState)
   );
 }
 
