@@ -15,7 +15,7 @@ DEFAULT_MOVENET_MODEL_PATH = "models/movenet_lightning.tflite"
 DEFAULT_MOVENET_INPUT_SIZE = 192
 DEFAULT_MOVENET_NUM_THREADS = 2
 
-COCO_TO_STRETCHSENSE = {
+COCO_TO_YUEDMAI = {
     5: "left_shoulder",
     6: "right_shoulder",
     7: "left_elbow",
@@ -182,7 +182,7 @@ def _keypoints_to_landmarks(
     letterbox: LetterboxInfo,
 ) -> dict[str, dict[str, float]]:
     landmarks: dict[str, dict[str, float]] = {}
-    for coco_index, name in COCO_TO_STRETCHSENSE.items():
+    for coco_index, name in COCO_TO_YUEDMAI.items():
         y_model, x_model, score = keypoints[coco_index]
         x_letterboxed = float(x_model) * letterbox.target_size
         y_letterboxed = float(y_model) * letterbox.target_size

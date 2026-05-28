@@ -1,6 +1,6 @@
-# StretchSense Model Files
+# YUEDMAI Model Files
 
-StretchSense expects a local MediaPipe Pose Landmarker model at:
+YUEDMAI expects a local MediaPipe Pose Landmarker model at:
 
 ```text
 models/pose_landmarker.task
@@ -25,7 +25,7 @@ If MediaPipe is unavailable or too slow on the UNO Q, keep the camera stream run
 
 ## MoveNet TFLite Model
 
-MoveNet is the lightweight CPU fallback to try when MediaPipe is unavailable or the YOLO/NCNN path is too heavy. StretchSense expects this file by default:
+MoveNet is the lightweight CPU fallback to try when MediaPipe is unavailable or the YOLO/NCNN path is too heavy. YUEDMAI expects this file by default:
 
 ```text
 models/movenet_lightning.tflite
@@ -57,7 +57,7 @@ MoveNet Lightning is the first model to try. MoveNet Thunder is larger and may b
 
 ## NCNN Vulkan Pose Model
 
-For GPU experiments on UNO Q, StretchSense can also load a YOLO pose model exported to NCNN:
+For GPU experiments on UNO Q, YUEDMAI can also load a YOLO pose model exported to NCNN:
 
 ```text
 models/yolov8n-pose_ncnn_model/model.ncnn.param

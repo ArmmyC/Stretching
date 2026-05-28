@@ -119,7 +119,7 @@ Added experimental `POSE_BACKEND=ncnn_pose` after UNO Q confirmed Vulkan sees `T
 - New file: `app/ncnn_pose.py`.
 - Loads `model.ncnn.param`/`model.ncnn.bin` or `model.param`/`model.bin`.
 - Uses NCNN Vulkan by default with `NCNN_GPU_INDEX=0`.
-- Maps YOLO COCO keypoints to StretchSense shoulders/elbows/wrists/hips/knees/ankles.
+- Maps YOLO COCO keypoints to YUEDMAI shoulders/elbows/wrists/hips/knees/ankles.
 - Reuses the same async worker, overlay, status, and pose-rule logic as MediaPipe.
 - Reports `ncnn_output_shapes` if the NCNN export layout needs decoder adjustment.
 
@@ -145,7 +145,7 @@ Added a local MoveNet fallback after YOLO/NCNN measured around 1-2 FPS on UNO Q.
   - `MOVENET_INPUT_SIZE=192`
   - `MOVENET_NUM_THREADS=2`
 - Runtime priority inside the backend: `ai-edge-litert`, then `tflite-runtime`, then `tensorflow`.
-- Maps MoveNet's 17 COCO keypoints to StretchSense shoulders/elbows/wrists/hips/knees/ankles.
+- Maps MoveNet's 17 COCO keypoints to YUEDMAI shoulders/elbows/wrists/hips/knees/ankles.
 - Reuses the same overlay, async worker, status JSON, and pose flags.
 - Updated `tools/test_pose_camera.py` with `--backend movenet`, `--movenet-model`, `--movenet-input-size`, and `--movenet-threads`.
 - Updated `tools/benchmark_pose_models.py` to auto-discover `models/movenet*.tflite` and to extract the first JPEG from an MJPEG dump saved from `/video_feed`.

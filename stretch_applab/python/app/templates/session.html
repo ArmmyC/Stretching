@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Session - StretchSense</title>
+  <title>Session - YUEDMAI</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="session-body" data-debug="{{ '1' if debug else '0' }}" data-hardware-page="session">
@@ -13,7 +13,7 @@
         <div class="left">
           <a class="brand" href="/" title="Exit session">
             <div class="brand-mark" aria-hidden="true"></div>
-            <div class="brand-name">Stretch<span class="dot">.</span>Sense</div>
+            <div class="brand-name">YuedMai</div>
           </a>
           <span class="badge" id="cam-source-badge">
             <span class="pulse"></span>
@@ -61,6 +61,29 @@
 
       <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
 
+      <div class="session-overlay boundary-precheck hidden" id="boundary-precheck" aria-live="polite">
+        <div class="boundary-precheck-copy">
+          <span>Boundary check</span>
+          <div class="humanoid-boundary" id="humanoid-boundary" aria-hidden="true">
+            <div class="humanoid-part humanoid-head"></div>
+            <div class="humanoid-part humanoid-torso"></div>
+            <div class="humanoid-part humanoid-arm left"></div>
+            <div class="humanoid-part humanoid-arm right"></div>
+            <div class="humanoid-part humanoid-leg left"></div>
+            <div class="humanoid-part humanoid-leg right"></div>
+          </div>
+          <h2 id="boundary-precheck-title">{{ status.setup.label }}</h2>
+          <p id="boundary-precheck-instruction">{{ status.setup.instruction }}</p>
+          <div class="boundary-meter" aria-hidden="true"><div id="boundary-meter-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="session-overlay paused-overlay hidden" id="paused-overlay" aria-live="polite">
+        <div class="paused-copy">
+          <span>Paused</span>
+        </div>
+      </div>
+
       <div class="session-overlay camera-countdown hidden" id="camera-countdown" aria-live="polite">
         <div class="countdown-copy">
           <span id="countdown-label">Get ready</span>
@@ -86,10 +109,35 @@
 
       <div class="session-overlay session-complete hidden" id="session-complete" aria-live="polite">
         <div class="complete-copy">
-          <span>Session complete</span>
-          <h2>Summary</h2>
-          <div class="complete-score"><strong id="complete-score">0</strong><span>Total score</span></div>
-          <p id="complete-meta">All stretches completed.</p>
+          <div class="summary-score-block">
+            <span>Final score</span>
+            <div class="complete-score"><strong id="complete-score">0</strong><span>pts</span></div>
+            <p id="complete-meta">All stretches completed.</p>
+          </div>
+          <div class="summary-showcase">
+            <div class="summary-slideshow" id="summary-slideshow">
+              <img class="hidden" id="summary-slide-image" alt="Captured stretch photo">
+              <div class="summary-slide-empty" id="summary-slide-empty">Capturing photos...</div>
+              <div class="summary-slide-meta">
+                <strong id="summary-slide-name">Stretch photo</strong>
+                <span id="summary-slide-score">0 pts</span>
+                <span id="summary-slide-counter">0 / 0</span>
+              </div>
+            </div>
+            <div class="summary-qr-panel">
+              <img id="summary-download-qr" src="{{ status.captures.qr_url }}" alt="QR code to download photos">
+              <h3>Scan to save photos</h3>
+              <p id="summary-share-url">{{ status.captures.share_url }}</p>
+            </div>
+          </div>
+          <a class="summary-dashboard-link" href="https://example.com/dashboard" target="_blank" rel="noopener">
+            Dashboard placeholder
+          </a>
+          <div class="summary-hardware-guide" aria-label="Summary controls">
+            <div><span>A</span><strong>Dashboard</strong></div>
+            <div><span>C / Knob</span><strong>Next photo</strong></div>
+            <div><span>B</span><strong>Back to setup</strong></div>
+          </div>
         </div>
       </div>
     </section>
@@ -112,6 +160,7 @@
     <div class="row"><span>Local URL</span><span id="d-url">--</span></div>
   </section>
 
+  <script src="/static/sounds.js"></script>
   <script src="/static/hardware.js"></script>
   <script src="/static/session.js"></script>
 </body>

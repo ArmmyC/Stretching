@@ -22,7 +22,7 @@ from app.pose_tracker import DEFAULT_MODEL_PATH, PoseTracker  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Benchmark StretchSense pose models/backends.")
+    parser = argparse.ArgumentParser(description="Benchmark YUEDMAI pose models/backends.")
     parser.add_argument("--camera", type=int, default=None, help="Optional OpenCV camera index.")
     parser.add_argument("--image", default=None, help="Optional image path. Used when no camera is set.")
     parser.add_argument("--width", type=int, default=320, help="Camera width or generated frame width.")
@@ -240,7 +240,7 @@ def _load_frames(args: argparse.Namespace) -> list[np.ndarray]:
         return [image]
 
     frame = np.zeros((args.height, args.width, 3), dtype=np.uint8)
-    cv2.putText(frame, "StretchSense", (20, args.height // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (220, 220, 220), 2)
+    cv2.putText(frame, "YUEDMAI", (20, args.height // 2), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (220, 220, 220), 2)
     return [frame]
 
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Set your stretch - StretchSense</title>
+  <title>Set your stretch - YUEDMAI</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body data-hardware-page="setup">
@@ -12,7 +12,7 @@
       <form class="panel setup-panel" id="config-form" action="/session" method="get">
         <div>
           <h2>Set your stretch</h2>
-          <p class="panel-sub">Choose a quick routine. The camera check stays on the right.</p>
+          <p class="panel-sub">Choose a quick routine.</p>
         </div>
 
         <div>
@@ -46,9 +46,12 @@
         <input type="hidden" name="duration" id="f-duration" value="{{ status.session.duration }}">
 
         <button type="submit" class="btn btn-primary btn-xl start-session-btn">
-          Start Session &rarr;
+          Start Session
         </button>
 
+      </form>
+
+      <aside class="panel camera-check-panel">
         <aside class="control-guide control-guide--setup" aria-label="Arduino Uno Q setup controls">
           <div class="control-guide-title">Arduino Uno Q controls</div>
           <div class="control-guide-grid">
@@ -58,15 +61,6 @@
             <div class="control-chip"><span>C</span><strong>Start now</strong></div>
           </div>
         </aside>
-      </form>
-
-      <aside class="panel camera-check-panel">
-        <div class="camera-check-head">
-          <div>
-            <h2>Camera check</h2>
-            <p class="panel-sub">Stand where your full body is visible before starting.</p>
-          </div>
-        </div>
 
         {% if (status.camera.selected_camera_source == 'USB_CAMERA' and status.camera.usb_camera_detected) or status.camera.phone_connected %}
           <div class="camera-frame setup-camera-frame">
@@ -104,9 +98,9 @@
               <div class="r-value">Waiting</div>
             {% endif %}
           </div>
-          <div class="r-card">
-            <div class="r-label">Position</div>
-            <div class="r-value">Full body visible</div>
+          <div class="r-card info">
+            <div class="r-label">Boundary</div>
+            <div class="r-value">Next</div>
           </div>
           <div class="r-card {{ 'ok' if status.camera.phone_connected else '' }}">
             <div class="r-label">Phone QR</div>
@@ -123,6 +117,7 @@
     </section>
   </main>
 
+  <script src="/static/sounds.js"></script>
   <script src="/static/hardware.js"></script>
   <script src="/static/setup.js"></script>
 </body>

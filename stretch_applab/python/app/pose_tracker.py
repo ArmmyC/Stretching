@@ -36,9 +36,11 @@ DEFAULT_FRAME_STRIDE = 1
 DEFAULT_ASYNC_ENABLED = True
 DEFAULT_MAX_ASYNC_FPS = 8
 DEFAULT_DELEGATE = "cpu"
+DEFAULT_FALLBACK_BACKEND = "movenet"
 FPS_LOG_INTERVAL_SEC = 5.0
 NCNN_BACKENDS = {"ncnn", "ncnn_pose", "ncnn_yolo_pose"}
 MOVENET_BACKENDS = {"movenet", "movenet_tflite"}
+DISABLED_FALLBACK_BACKENDS = {"", "none", "off", "false", "disabled"}
 
 LANDMARK_INDEXES = {
     "left_shoulder": 11,
@@ -224,6 +226,8 @@ class PoseTracker:
     ):
         self.requested_enabled = bool(enabled)
         self.backend = (backend or os.getenv("POSE_BACKEND", "mediapipe")).strip().lower() or "mediapipe"
+        self.requested_backend = self.backend
+        self.fallback_backend = os.getenv("POSE_FALLBACK_BACKEND", DEFAULT_FALLBACK_BACKEND).strip().lower()
         self.model_path = _resolve_model_path(model_path or os.getenv("POSE_MODEL_PATH", DEFAULT_MODEL_PATH))
         self.requested_delegate = _resolve_delegate(delegate, os.getenv("POSE_DELEGATE", DEFAULT_DELEGATE))
         self.active_delegate = "none"
@@ -298,6 +302,7 @@ class PoseTracker:
 
         logger.info("Pose tracker init. enabled=%s backend=%s", self.requested_enabled, self.backend)
         logger.info("Pose model path: %s", self.model_path)
+        logger.info("Pose fallback backend: %s", self.fallback_backend or "none")
         logger.info(
             "Pose performance config. delegate=%s inference_width=%s frame_stride=%s async=%s max_async_fps=%s",
             self.requested_delegate,
@@ -321,6 +326,8 @@ class PoseTracker:
 
         if self.backend == "mediapipe":
             self._load_mediapipe()
+            if not self.model_loaded:
+                self._load_fallback_backend()
         elif self.backend in NCNN_BACKENDS:
             self._load_ncnn()
         elif self.backend in MOVENET_BACKENDS:
@@ -538,6 +545,8 @@ class PoseTracker:
             {
                 "pose_enabled": bool(self.enabled and self.model_loaded),
                 "pose_backend": self.backend,
+                "pose_backend_requested": self.requested_backend,
+                "pose_fallback_backend": self.fallback_backend,
                 "fps_pose": round(float(self.fps_pose), 2),
                 "last_pose_timestamp": self.last_pose_timestamp,
                 "model_path": str(self.model_path),
@@ -559,6 +568,35 @@ class PoseTracker:
         if self.last_warning:
             status["last_warning"] = self.last_warning
         return status
+
+    def _load_fallback_backend(self) -> None:
+        if self.fallback_backend in DISABLED_FALLBACK_BACKENDS or self.fallback_backend == "mediapipe":
+            return
+
+        primary_error = self.last_error or "unknown MediaPipe load error"
+        logger.warning(
+            "MediaPipe pose unavailable; trying fallback backend=%s. reason=%s",
+            self.fallback_backend,
+            primary_error,
+        )
+        self.backend = self.fallback_backend
+        self.last_error = None
+
+        if self.fallback_backend in MOVENET_BACKENDS:
+            self._load_movenet()
+        elif self.fallback_backend in NCNN_BACKENDS:
+            self._load_ncnn()
+        else:
+            self.last_error = f"Pose fallback backend '{self.fallback_backend}' is not implemented."
+            logger.error("%s Supported fallback backends: movenet, ncnn_pose, none.", self.last_error)
+            self._last_status = self._empty_status()
+            return
+
+        if self.model_loaded:
+            self.last_warning = f"MediaPipe unavailable ({primary_error}); using {self.backend} fallback."
+            logger.warning("Using pose fallback backend=%s after MediaPipe failed.", self.backend)
+        else:
+            self.last_warning = f"MediaPipe unavailable ({primary_error}); fallback failed: {self.last_error}"
 
     def _backend_ready(self) -> bool:
         if self.backend == "mediapipe":
@@ -795,6 +833,8 @@ class PoseTracker:
         return {
             "pose_enabled": bool(self.enabled and self.model_loaded),
             "pose_backend": self.backend,
+            "pose_backend_requested": self.requested_backend,
+            "pose_fallback_backend": self.fallback_backend,
             "pose_delegate_requested": self._requested_runtime_delegate(),
             "pose_delegate_active": self.active_delegate,
             "pose_ok": False,
@@ -822,12 +862,16 @@ class PoseTracker:
         return {
             "pose_enabled": bool(self.enabled and self.model_loaded),
             "pose_backend": self.backend,
+            "pose_backend_requested": self.requested_backend,
+            "pose_fallback_backend": self.fallback_backend,
             "pose_delegate_requested": self._requested_runtime_delegate(),
             "pose_delegate_active": self.active_delegate,
             "pose_ok": False,
             "fps_pose": round(float(self.fps_pose), 2),
             "last_pose_timestamp": self.last_pose_timestamp,
             "user_visible": False,
+            "upper_body_visible": False,
+            "full_body_visible": False,
             "arm_raised": False,
             "torso_centered": False,
             "confidence": 0.0,
@@ -849,12 +893,16 @@ class PoseTracker:
         for key in (
             "pose_enabled",
             "pose_backend",
+            "pose_backend_requested",
+            "pose_fallback_backend",
             "pose_delegate_requested",
             "pose_delegate_active",
             "pose_ok",
             "fps_pose",
             "last_pose_timestamp",
             "user_visible",
+            "upper_body_visible",
+            "full_body_visible",
             "arm_raised",
             "torso_centered",
             "confidence",

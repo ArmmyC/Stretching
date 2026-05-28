@@ -20,7 +20,7 @@ from app.pose_tracker import DEFAULT_MODEL_PATH, PoseTracker  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Test StretchSense camera pose tracking.")
+    parser = argparse.ArgumentParser(description="Test YUEDMAI camera pose tracking.")
     parser.add_argument("--camera", type=int, default=0, help="OpenCV camera index.")
     parser.add_argument("--width", type=int, default=640, help="Requested frame width.")
     parser.add_argument("--height", type=int, default=480, help="Requested frame height.")
@@ -114,7 +114,7 @@ def main() -> int:
 
             if window_available:
                 try:
-                    cv2.imshow("StretchSense Pose Test", output)
+                    cv2.imshow("YUEDMAI Pose Test", output)
                     key = cv2.waitKey(1) & 0xFF
                     if key in (27, ord("q")):
                         break

@@ -7,19 +7,21 @@ import time
 
 import uvicorn
 
-os.environ.setdefault("POSE_BACKEND", "movenet")
-os.environ.setdefault("MOVENET_MODEL_PATH", "models/movenet_lightning.tflite")
-os.environ.setdefault("MOVENET_INPUT_SIZE", "192")
-os.environ.setdefault("MOVENET_NUM_THREADS", "2")
+os.environ.setdefault("POSE_BACKEND", "mediapipe")
+os.environ.setdefault("POSE_MODEL_PATH", "models/pose_landmarker.task")
+os.environ.setdefault("POSE_DELEGATE", "cpu")
+os.environ.setdefault("POSE_INFERENCE_WIDTH", "192")
+os.environ.setdefault("POSE_FRAME_STRIDE", "1")
 os.environ.setdefault("POSE_ASYNC_ENABLED", "true")
-os.environ.setdefault("POSE_MAX_ASYNC_FPS", "10")
+os.environ.setdefault("POSE_MAX_ASYNC_FPS", "4")
+os.environ.setdefault("POSE_FALLBACK_BACKEND", "movenet")
 
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 
 
 def _run_uvicorn() -> None:
-    logging.getLogger(__name__).info("Starting StretchSense FastAPI server on %s:%s", APP_HOST, APP_PORT)
+    logging.getLogger(__name__).info("Starting YUEDMAI FastAPI server on %s:%s", APP_HOST, APP_PORT)
     uvicorn.run("app.main:app", host=APP_HOST, port=APP_PORT, log_level="info")
 
 
@@ -29,13 +31,13 @@ def _run_with_app_lab() -> bool:
     except ImportError:
         return False
 
-    print(f"StretchSense App Lab launcher starting server on http://{APP_HOST}:{APP_PORT}")
-    server_thread = threading.Thread(target=_run_uvicorn, name="stretchsense-fastapi", daemon=True)
+    print(f"YUEDMAI App Lab launcher starting server on http://{APP_HOST}:{APP_PORT}")
+    server_thread = threading.Thread(target=_run_uvicorn, name="YUEDMAI-fastapi", daemon=True)
     server_thread.start()
 
     def heartbeat() -> None:
         if not server_thread.is_alive():
-            print("StretchSense FastAPI server stopped.")
+            print("YUEDMAI FastAPI server stopped.")
         time.sleep(1.0)
 
     App.run(user_loop=heartbeat)

@@ -1,2 +1,2 @@
-"""StretchSense local kiosk web app."""
+"""YUEDMAI local kiosk web app."""
 

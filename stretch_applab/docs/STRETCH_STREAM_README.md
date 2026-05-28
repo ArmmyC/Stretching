@@ -1,6 +1,6 @@
-# StretchSense
+# YUEDMAI
 
-StretchSense is a local kiosk-style web app for a Smart Stretch Coach running on Arduino UNO Q Linux. It helps gym beginners quickly choose a before-workout or after-workout stretching routine without needing to remember what to do.
+YUEDMAI is a local kiosk-style web app for a Smart Stretch Coach running on Arduino UNO Q Linux. It helps gym beginners quickly choose a before-workout or after-workout stretching routine without needing to remember what to do.
 
 The UNO Q hosts the site locally. There is no external hosting, database, authentication, cloud service, or public web server. This keeps latency low and makes the prototype reliable inside a small room or gym.
 

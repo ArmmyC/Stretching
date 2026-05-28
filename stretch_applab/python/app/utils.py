@@ -45,7 +45,7 @@ def setup_logging() -> None:
 
 def log_startup_details(force_camera_mode: str, public_base_url: str) -> None:
     logger = logging.getLogger(__name__)
-    logger.info("StretchSense app startup")
+    logger.info("YUEDMAI app startup")
     logger.info("OS/platform: %s", platform.platform())
     logger.info("Python version: %s", sys.version.replace("\n", " "))
     logger.info("APP_HOST=%s", os.getenv("APP_HOST", "0.0.0.0"))
@@ -61,6 +61,7 @@ def log_startup_details(force_camera_mode: str, public_base_url: str) -> None:
     logger.info("POSE_FRAME_STRIDE=%s", os.getenv("POSE_FRAME_STRIDE", "1"))
     logger.info("POSE_ASYNC_ENABLED=%s", os.getenv("POSE_ASYNC_ENABLED", "true"))
     logger.info("POSE_MAX_ASYNC_FPS=%s", os.getenv("POSE_MAX_ASYNC_FPS", "8"))
+    logger.info("POSE_FALLBACK_BACKEND=%s", os.getenv("POSE_FALLBACK_BACKEND", "movenet"))
     logger.info("NCNN_MODEL_DIR=%s", os.getenv("NCNN_MODEL_DIR", "models/yolov8n-pose_ncnn_model"))
     logger.info("NCNN_INPUT_SIZE=%s", os.getenv("NCNN_INPUT_SIZE", "320"))
     logger.info("NCNN_USE_VULKAN=%s", os.getenv("NCNN_USE_VULKAN", "true"))

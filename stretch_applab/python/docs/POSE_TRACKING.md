@@ -1,6 +1,6 @@
-# StretchSense Pose Tracking
+# YUEDMAI Pose Tracking
 
-StretchSense uses camera pose tracking to produce simple, local-only body-position flags for the stretching station. The camera layer is not a medical assessment, does not diagnose mobility, and does not make claims about injury prevention or treatment. It only helps the kiosk understand whether the user appears framed and whether the overhead shoulder stretch is roughly in position.
+YUEDMAI uses camera pose tracking to produce simple, local-only body-position flags for the stretching station. The camera layer is not a medical assessment, does not diagnose mobility, and does not make claims about injury prevention or treatment. It only helps the kiosk understand whether the user appears framed and whether the overhead shoulder stretch is roughly in position.
 
 ## Current Backend
 
@@ -34,11 +34,11 @@ export POSE_MAX_ASYNC_FPS=10
 python tools/test_pose_camera.py --backend movenet --camera 0 --width 320 --height 240
 ```
 
-The backend maps MoveNet's 17 COCO keypoints into the same StretchSense landmarks and flags. It runs on the CPU through `ai-edge-litert`, `tflite-runtime`, or `tensorflow` if one of those interpreters is installed. It does not use the Adreno GPU directly, but it should be much lighter than YOLO pose on NCNN for this MVP.
+The backend maps MoveNet's 17 COCO keypoints into the same YUEDMAI landmarks and flags. It runs on the CPU through `ai-edge-litert`, `tflite-runtime`, or `tensorflow` if one of those interpreters is installed. It does not use the Adreno GPU directly, but it should be much lighter than YOLO pose on NCNN for this MVP.
 
 ## NCNN Vulkan Backend
 
-UNO Q exposes the Adreno 702 through Vulkan/Turnip, so StretchSense includes an experimental NCNN YOLO pose backend:
+UNO Q exposes the Adreno 702 through Vulkan/Turnip, so YUEDMAI includes an experimental NCNN YOLO pose backend:
 
 ```bash
 export POSE_BACKEND=ncnn_pose
@@ -49,7 +49,7 @@ export NCNN_INPUT_SIZE=320
 python tools/test_pose_camera.py --backend ncnn_pose --camera 0 --width 320 --height 240
 ```
 
-The backend expects a YOLO pose NCNN export with 17 COCO keypoints. It maps shoulders, elbows, wrists, hips, knees, and ankles into the same StretchSense landmark dictionary used by MediaPipe.
+The backend expects a YOLO pose NCNN export with 17 COCO keypoints. It maps shoulders, elbows, wrists, hips, knees, and ankles into the same YUEDMAI landmark dictionary used by MediaPipe.
 
 If the export has a different output layout, the backend logs `ncnn_output_shapes` so the decoder can be adjusted without changing the camera source manager.
 
@@ -144,7 +144,7 @@ export POSE_DELEGATE=gpu
 python tools/test_pose_camera.py --camera 0 --width 320 --height 240 --pose-width 192 --delegate gpu
 ```
 
-If the MediaPipe GPU delegate is unavailable in the installed Python wheel or board driver stack, StretchSense logs the GPU failure and falls back to CPU. Check `/api/status` for `pose_delegate_requested` and `pose_delegate_active`.
+If the MediaPipe GPU delegate is unavailable in the installed Python wheel or board driver stack, YUEDMAI logs the GPU failure and falls back to CPU. Check `/api/status` for `pose_delegate_requested` and `pose_delegate_active`.
 
 For NCNN/Vulkan, prefer:
 

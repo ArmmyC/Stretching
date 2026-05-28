@@ -110,7 +110,7 @@
     startButton.addEventListener("focus", () => setFocusToItem(startButton));
   }
 
-  window.addEventListener("stretchsense:hardware", (event) => {
+  window.addEventListener("YUEDMAI:hardware", (event) => {
     const action = event.detail && event.detail.action;
     if (action === "NEXT") move(1);
     if (action === "PREV") move(-1);

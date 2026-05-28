@@ -17,7 +17,7 @@ DEFAULT_NCNN_CONFIDENCE = 0.25
 DEFAULT_NCNN_IOU = 0.45
 DEFAULT_NCNN_GPU_INDEX = 0
 
-COCO_TO_STRETCHSENSE = {
+COCO_TO_YUEDMAI = {
     5: "left_shoulder",
     6: "right_shoulder",
     7: "left_elbow",
@@ -264,7 +264,7 @@ def _detection_to_landmarks(
         keypoints[:, :2] *= float(input_size)
 
     landmarks: dict[str, dict[str, float]] = {}
-    for coco_index, name in COCO_TO_STRETCHSENSE.items():
+    for coco_index, name in COCO_TO_YUEDMAI.items():
         x_model, y_model, confidence = keypoints[coco_index]
         x_source = (float(x_model) - letterbox.pad_x) / max(letterbox.scale, 1e-6)
         y_source = (float(y_model) - letterbox.pad_y) / max(letterbox.scale, 1e-6)

@@ -7,10 +7,34 @@ from dataclasses import dataclass
 from typing import Any
 
 
+@dataclass(frozen=True)
+class StretchDefinition:
+    name: str
+    score_hint: str = "steady_hold"
+    needs_arm_raised: bool = False
+    needs_full_body: bool = False
+
+
 ROUTINES = {
     "before": ["Arm circles", "Hip opener", "Hamstring sweep"],
-    "after": ["Shoulder stretch", "Quad stretch", "Hamstring stretch"],
-    "upper": ["Shoulder stretch", "Chest opener", "Triceps stretch"],
+    "after": [
+        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
+        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Doorway chest opener", "open_chest"),
+        StretchDefinition("Shoulder external rotation", "controlled_rotation"),
+    ],
+    "after_upper": [
+        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
+        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+        StretchDefinition("Doorway chest opener", "open_chest"),
+        StretchDefinition("Shoulder external rotation", "controlled_rotation"),
+    ],
+    "upper": [
+        StretchDefinition("Arm circles", "controlled_rotation"),
+        StretchDefinition("Wall slides", "overhead_control", needs_arm_raised=True),
+        StretchDefinition("Cross-body shoulder stretch", "steady_hold"),
+        StretchDefinition("Overhead triceps stretch", "overhead_hold", needs_arm_raised=True),
+    ],
     "lower": ["Quad stretch", "Hamstring stretch", "Calf stretch"],
     "full": ["Shoulder stretch", "Hip opener", "Hamstring stretch"],
 }
@@ -75,7 +99,7 @@ class SessionManager:
             self._paused_elapsed = 0.0
             self._running = True
             self._paused = False
-            self.logger.info("Session next stretch index=%s stretch=%s", self._current_index, routine[self._current_index])
+            self.logger.info("Session next stretch index=%s stretch=%s", self._current_index, self._stretch_name(routine[self._current_index]))
             return self._status_locked()
 
     def reset(self) -> dict[str, Any]:
@@ -105,9 +129,14 @@ class SessionManager:
             )
             return self._status_locked()
 
-    def get_status(self, camera_state: str | None = None) -> dict[str, Any]:
+    def get_status(
+        self,
+        camera_state: str | None = None,
+        pose_metrics: dict[str, Any] | None = None,
+        nano_metrics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         with self._lock:
-            status = self._status_locked()
+            status = self._status_locked(pose_metrics=pose_metrics, nano_metrics=nano_metrics)
             if camera_state == "NO_CAMERA":
                 status["state"] = "NO_CAMERA"
                 status["instruction"] = INSTRUCTIONS["NO_CAMERA"]
@@ -116,8 +145,10 @@ class SessionManager:
                 status["instruction"] = INSTRUCTIONS["WAITING_FOR_PHONE"]
             return status
 
-    def _routine_locked(self) -> list[str]:
+    def _routine_locked(self) -> list[StretchDefinition | str]:
         if self.config.body_focus == "upper":
+            if self.config.mode == "after":
+                return ROUTINES["after_upper"]
             return ROUTINES["upper"]
         if self.config.body_focus == "lower":
             return ROUTINES["lower"]
@@ -126,6 +157,10 @@ class SessionManager:
         if self.config.mode == "after":
             return ROUTINES["after"]
         return ROUTINES["full"]
+
+    @staticmethod
+    def _stretch_name(stretch: StretchDefinition | str) -> str:
+        return stretch.name if isinstance(stretch, StretchDefinition) else stretch
 
     def _elapsed_locked(self) -> float:
         if not self._running:
@@ -147,13 +182,79 @@ class SessionManager:
             return "GOOD"
         return "DONE"
 
-    def _status_locked(self) -> dict[str, Any]:
+    def _score_locked(
+        self,
+        state: str,
+        elapsed: float,
+        stretch: StretchDefinition | str,
+        pose_metrics: dict[str, Any] | None = None,
+        nano_metrics: dict[str, Any] | None = None,
+    ) -> int:
+        if state in {"IDLE", "READY"}:
+            return 0
+
+        if state == "HOLD":
+            base = 64 + min(16, int(max(0.0, elapsed - 5.0) * 1.6))
+        elif state == "GOOD":
+            base = 88 + min(7, int(max(0.0, elapsed - 15.0) * 1.4))
+        else:
+            base = 100
+
+        if not isinstance(stretch, StretchDefinition) or not pose_metrics:
+            form_multiplier = 1.0
+        else:
+            form_multiplier = 1.0
+
+            pose_ready = bool(pose_metrics.get("pose_enabled") and pose_metrics.get("model_loaded"))
+            if pose_ready:
+                confidence = float(pose_metrics.get("confidence") or 0.0)
+                user_visible = bool(pose_metrics.get("user_visible"))
+                torso_centered = bool(pose_metrics.get("torso_centered"))
+                full_body_visible = bool(pose_metrics.get("full_body_visible"))
+                arm_raised = bool(pose_metrics.get("arm_raised"))
+
+                if confidence < 0.45 or not user_visible:
+                    form_multiplier -= 0.32
+                if not torso_centered:
+                    form_multiplier -= 0.14
+                if stretch.needs_full_body and not full_body_visible:
+                    form_multiplier -= 0.18
+                if stretch.needs_arm_raised and not arm_raised:
+                    form_multiplier -= 0.18
+                if stretch.score_hint in {"controlled_rotation", "overhead_control"} and confidence >= 0.65:
+                    form_multiplier += 0.04
+
+        if nano_metrics and nano_metrics.get("fresh"):
+            nano_arm_raised = bool(nano_metrics.get("arm_raised"))
+            nano_stable = bool(nano_metrics.get("stable"))
+            stability_score = float(nano_metrics.get("stability_score") or 0.0)
+            gyro_mag = float(nano_metrics.get("gyro_mag") or 0.0)
+            if isinstance(stretch, StretchDefinition) and stretch.needs_arm_raised and not nano_arm_raised:
+                form_multiplier -= 0.18
+            if state in {"HOLD", "GOOD"}:
+                if nano_stable:
+                    form_multiplier += 0.06
+                else:
+                    form_multiplier -= 0.14
+                if stability_score > 0:
+                    form_multiplier += max(-0.12, min(0.08, (stability_score - 70.0) / 400.0))
+                if gyro_mag >= 35.0:
+                    form_multiplier -= 0.12
+
+        return max(0, min(100, int(round(base * max(0.45, min(1.04, form_multiplier))))))
+
+    def _status_locked(
+        self,
+        pose_metrics: dict[str, Any] | None = None,
+        nano_metrics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         routine = self._routine_locked()
         current_stretch = routine[self._current_index]
+        current_stretch_name = self._stretch_name(current_stretch)
         elapsed = self._elapsed_locked()
         state = self._state_for_elapsed(elapsed)
         remaining = max(0, 20 - int(elapsed))
-        score = 0 if state in {"IDLE", "READY"} else 72 if state == "HOLD" else 88 if state == "GOOD" else 100
+        score = self._score_locked(state, elapsed, current_stretch, pose_metrics, nano_metrics)
         return {
             "mode": self.config.mode,
             "mode_label": "Before Workout" if self.config.mode == "before" else "After Workout",
@@ -164,9 +265,9 @@ class SessionManager:
                 "full": "Full Body",
             }[self.config.body_focus],
             "duration": self.config.duration,
-            "routine": routine,
+            "routine": [self._stretch_name(stretch) for stretch in routine],
             "current_index": self._current_index,
-            "current_stretch": current_stretch,
+            "current_stretch": current_stretch_name,
             "state": state,
             "instruction": INSTRUCTIONS[state],
             "elapsed_time": round(elapsed, 1),

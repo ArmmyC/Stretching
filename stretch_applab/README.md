@@ -1,4 +1,4 @@
-# StretchSense App Lab Package
+# YUEDMAI App Lab Package
 
 This folder is a packaging copy for Arduino App Lab. It keeps the main FastAPI app from `stretch_stream` intact and adds only an App Lab launcher.
 
@@ -16,7 +16,7 @@ Copy the contents of this folder into an Arduino App Lab app folder, for example
 
 The important files are:
 
-- `python/app/`: the FastAPI StretchSense app, templates, CSS, JavaScript, camera manager, QR phone streaming, and inference hook.
+- `python/app/`: the FastAPI YUEDMAI app, templates, CSS, JavaScript, camera manager, QR phone streaming, and inference hook.
 - `python/main.py`: App Lab launcher that starts Uvicorn on `0.0.0.0:8000` by default.
 - `python/requirements.txt`: Python dependencies for the App Lab virtual environment.
 - `sketch/sketch.ino`: minimal MCU sketch placeholder.

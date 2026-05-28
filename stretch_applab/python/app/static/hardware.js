@@ -1,8 +1,9 @@
-/* Shared StretchSense hardware action bridge. */
+/* Shared YUEDMAI hardware action bridge. */
 (function () {
   "use strict";
 
-  const eventName = "stretchsense:hardware";
+  const eventName = "YUEDMAI:hardware";
+  const nanoEventName = "YUEDMAI:nano-imu";
   let socket = null;
   let reconnectTimer = null;
   let lastFeedback = "";
@@ -13,6 +14,16 @@
         action,
         value: Number(value || 0),
         source: source || "browser",
+        timestamp: Date.now() / 1000,
+      },
+    }));
+  }
+
+  function emitNanoImu(payload, source) {
+    window.dispatchEvent(new CustomEvent(nanoEventName, {
+      detail: {
+        ...(payload || {}),
+        source: source || "uno_q_ble",
         timestamp: Date.now() / 1000,
       },
     }));
@@ -40,6 +51,8 @@
         const data = JSON.parse(message.data);
         if (data.type === "hardware_event" && data.action) {
           emit(data.action, data.value, data.source || "uno_q");
+        } else if (data.type === "nano_imu") {
+          emitNanoImu(data.nano_imu || {}, data.source || "uno_q_ble");
         }
       } catch (error) {
         console.error(error);
@@ -71,7 +84,9 @@
 
   window.StretchHardware = {
     eventName,
+    nanoEventName,
     emit,
+    emitNanoImu,
     sendFeedback,
   };
 

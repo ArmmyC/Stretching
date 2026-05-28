@@ -1,12 +1,18 @@
 /*
-  StretchSense App Lab sketch
+  YUEDMAI App Lab sketch
 
   Reads Modulino Knob and Modulino Buttons on the UNO Q MCU side, sends
   abstract navigation actions to Python through Arduino_RouterBridge, and
   receives lightweight feedback for Modulino Pixels / button LEDs.
+
+  Also scans for the Nano 33 BLE Sense Lite wearable named YUEDMAI-NanoIMU,
+  subscribes to its compact IMU characteristic, and forwards that JSON payload
+  to Python as nano_imu for scoring/dashboard use.
 */
 
 #include <Arduino.h>
+
+#define USE_NANO_BLE_IMU 1
 
 #if defined(__has_include)
   #if __has_include(<Arduino_RouterBridge.h>)
@@ -25,17 +31,29 @@
   #else
     #define HAS_MODULINO_LIBRARY 0
   #endif
+
+  #if __has_include(<ArduinoBLE.h>)
+    #include <ArduinoBLE.h>
+    #define HAS_ARDUINOBLE 1
+  #else
+    #define HAS_ARDUINOBLE 0
+  #endif
 #else
   #define HAS_ROUTER_BRIDGE 0
   #define HAS_MODULINO_LIBRARY 0
+  #define HAS_ARDUINOBLE 0
 #endif
 
 const unsigned long INPUT_POLL_MS = 25;
 const unsigned long LONG_PRESS_MS = 850;
 const unsigned long FEEDBACK_REFRESH_MS = 80;
 const unsigned long BUTTON_DEBUG_MS = 1000;
+const unsigned long BLE_SCAN_RETRY_MS = 2500;
 const unsigned long SERIAL_BAUD = 115200;
 const int PIXEL_COUNT = 8;
+const char NANO_BLE_NAME[] = "YUEDMAI-NanoIMU";
+const char NANO_BLE_SERVICE_UUID[] = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const char NANO_BLE_IMU_CHAR_UUID[] = "19b10001-e8f2-537e-4f6c-d104768a1214";
 
 #if HAS_MODULINO_LIBRARY
 ModulinoKnob modulinoKnob;
@@ -43,9 +61,17 @@ ModulinoButtons modulinoButtons;
 ModulinoPixels modulinoPixels;
 #endif
 
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+BLEDevice nanoBlePeripheral;
+BLECharacteristic nanoBleImuCharacteristic;
+#endif
+
 bool knobAvailable = false;
 bool buttonsAvailable = false;
 bool pixelsAvailable = false;
+bool nanoBleHealthy = false;
+bool nanoBleConnected = false;
+bool nanoBleSubscribed = false;
 
 bool knobPressed = false;
 bool knobLongSent = false;
@@ -67,6 +93,9 @@ String lastFeedbackDebug = "";
 unsigned long lastInputMs = 0;
 unsigned long lastFeedbackMs = 0;
 unsigned long lastButtonDebugMs = 0;
+unsigned long lastBleScanMs = 0;
+unsigned long lastBleReadMs = 0;
+char nanoBleLine[256];
 
 const char *buttonAction(int index) {
   switch (index) {
@@ -100,6 +129,154 @@ void notifyAction(const char *action, int value = 0) {
   Serial.print(action);
   Serial.print(" ");
   Serial.println(value);
+#endif
+}
+
+void notifyNanoImu(const char *payload) {
+  if (payload == NULL || payload[0] == '\0') return;
+
+  Serial.print("# notify nano_imu bridge=");
+  Serial.print(HAS_ROUTER_BRIDGE ? "yes" : "no");
+  Serial.print(" payload=");
+  Serial.println(payload);
+#if HAS_ROUTER_BRIDGE
+  Bridge.notify("nano_imu", payload);
+#else
+  Serial.print("# nano_imu ");
+  Serial.println(payload);
+#endif
+}
+
+void startNanoBleScan() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  BLE.stopScan();
+  BLE.scanForUuid(NANO_BLE_SERVICE_UUID);
+  lastBleScanMs = millis();
+  Serial.println("# BLE scanning for Nano IMU");
+#endif
+}
+
+void initNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  if (!BLE.begin()) {
+    nanoBleHealthy = false;
+    Serial.println("# WARN ArduinoBLE begin failed; Nano BLE disabled");
+    return;
+  }
+  nanoBleHealthy = true;
+  startNanoBleScan();
+#else
+  nanoBleHealthy = false;
+  Serial.println("# WARN ArduinoBLE library not installed; Nano BLE disabled");
+#endif
+}
+
+void disconnectNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  if (nanoBlePeripheral && nanoBlePeripheral.connected()) {
+    nanoBlePeripheral.disconnect();
+  }
+  nanoBleConnected = false;
+  nanoBleSubscribed = false;
+  startNanoBleScan();
+#endif
+}
+
+bool connectAvailableNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  BLEDevice peripheral = BLE.available();
+  if (!peripheral) {
+    return false;
+  }
+
+  Serial.print("# BLE Nano candidate ");
+  Serial.println(peripheral.address());
+  BLE.stopScan();
+
+  if (!peripheral.connect()) {
+    Serial.println("# WARN BLE Nano connect failed");
+    startNanoBleScan();
+    return false;
+  }
+
+  if (!peripheral.discoverService(NANO_BLE_SERVICE_UUID)) {
+    Serial.println("# WARN BLE Nano service discovery failed");
+    peripheral.disconnect();
+    startNanoBleScan();
+    return false;
+  }
+
+  BLECharacteristic imuChar = peripheral.characteristic(NANO_BLE_IMU_CHAR_UUID);
+  if (!imuChar) {
+    Serial.println("# WARN BLE Nano IMU characteristic missing");
+    peripheral.disconnect();
+    startNanoBleScan();
+    return false;
+  }
+
+  nanoBlePeripheral = peripheral;
+  nanoBleImuCharacteristic = imuChar;
+  nanoBleSubscribed = nanoBleImuCharacteristic.canSubscribe() && nanoBleImuCharacteristic.subscribe();
+  nanoBleConnected = true;
+  lastBleReadMs = 0;
+
+  Serial.print("# BLE Nano connected name=");
+  Serial.print(peripheral.localName());
+  Serial.print(" notify=");
+  Serial.println(nanoBleSubscribed ? "yes" : "no");
+  return true;
+#else
+  return false;
+#endif
+}
+
+void readNanoBlePacket() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  if (!nanoBleConnected || !nanoBleImuCharacteristic) return;
+
+  int valueLength = nanoBleImuCharacteristic.valueLength();
+  if (valueLength <= 0) return;
+
+  int readLength = min(valueLength, (int)sizeof(nanoBleLine) - 1);
+  int actualLength = nanoBleImuCharacteristic.readValue((uint8_t *)nanoBleLine, readLength);
+  if (actualLength <= 0) return;
+
+  nanoBleLine[actualLength] = '\0';
+  notifyNanoImu(nanoBleLine);
+#endif
+}
+
+void updateNanoBle() {
+#if HAS_ARDUINOBLE && USE_NANO_BLE_IMU
+  if (!nanoBleHealthy) return;
+
+  BLE.poll();
+
+  if (nanoBleConnected) {
+    if (!nanoBlePeripheral.connected()) {
+      Serial.println("# BLE Nano disconnected");
+      disconnectNanoBle();
+      return;
+    }
+
+    if (nanoBleSubscribed) {
+      if (nanoBleImuCharacteristic.valueUpdated()) {
+        readNanoBlePacket();
+      }
+    } else if (millis() - lastBleReadMs >= FEEDBACK_REFRESH_MS) {
+      lastBleReadMs = millis();
+      readNanoBlePacket();
+    }
+    return;
+  }
+
+  if (connectAvailableNanoBle()) {
+    return;
+  }
+
+  if (millis() - lastBleScanMs >= BLE_SCAN_RETRY_MS) {
+    startNanoBleScan();
+  }
 #endif
 }
 
@@ -324,6 +501,8 @@ void initHardware() {
   Serial.println(HAS_ROUTER_BRIDGE);
   Serial.print("# compile HAS_MODULINO_LIBRARY=");
   Serial.println(HAS_MODULINO_LIBRARY);
+  Serial.print("# compile HAS_ARDUINOBLE=");
+  Serial.println(HAS_ARDUINOBLE);
 
 #if HAS_ROUTER_BRIDGE
   Serial.println("# Bridge.begin");
@@ -365,6 +544,8 @@ void initHardware() {
 #if !HAS_ROUTER_BRIDGE
   Serial.println("# Arduino_RouterBridge library unavailable.");
 #endif
+
+  initNanoBle();
 }
 
 void setup() {
@@ -373,7 +554,7 @@ void setup() {
   while (!Serial && millis() - waitStart < 1500) {
     delay(10);
   }
-  Serial.println("# StretchSense App Lab hardware bridge boot");
+  Serial.println("# YUEDMAI App Lab hardware bridge boot");
   initHardware();
 }
 
@@ -383,6 +564,7 @@ void loop() {
     lastInputMs = now;
     readKnob();
     readButtons();
+    updateNanoBle();
   }
 
   if (now - lastFeedbackMs >= FEEDBACK_REFRESH_MS) {
