@@ -6,7 +6,7 @@
   <title>Session - StretchSense</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body data-debug="{{ '1' if debug else '0' }}">
+<body class="session-body" data-debug="{{ '1' if debug else '0' }}" data-hardware-page="session">
   <main class="session-shell">
     <section class="session-stage">
       <div class="stage-top">
@@ -20,13 +20,26 @@
             <span id="cam-source-text">{{ status.camera.source_label }}</span>
           </span>
         </div>
-        <div class="state-pill" id="state-pill" data-state="{{ status.session.state|replace('_', ' ') }}">
-          <span id="state-text">{{ status.session.state|replace('_', ' ') }}</span>
+        <div class="hud-score" aria-label="Total score">
+          <span>Total score</span>
+          <strong id="score-value">{{ status.session.score }}</strong>
         </div>
       </div>
 
+      <aside class="control-guide control-guide--session" aria-label="Arduino Uno Q session controls">
+        <div class="control-guide-title">Arduino Uno Q controls</div>
+        <div class="control-guide-grid">
+          <div class="control-chip"><span>A / Knob</span><strong>Pause / resume / start</strong></div>
+          <div class="control-chip"><span>B</span><strong>Done: setup</strong></div>
+          <div class="control-chip"><span>Hold B</span><strong>Setup anytime</strong></div>
+          <div class="control-chip"><span>C</span><strong>Next stretch</strong></div>
+          <div class="control-chip"><span>Hold C</span><strong>Reset</strong></div>
+          <div class="control-chip"><span>Hold knob</span><strong>Pause / resume</strong></div>
+        </div>
+      </aside>
+
       <div class="stream-wrap">
-        <img class="stream" id="cam-stream" src="/video_feed" alt="Live camera"
+        <img class="stream" id="cam-stream" src="/video_feed?overlay=0" alt="Live camera"
              onerror="this.style.display='none'; document.getElementById('cam-fallback').style.display='flex';">
         <div class="camera-placeholder" id="cam-fallback" style="display:none;">
           <div class="ring">O</div>
@@ -42,58 +55,44 @@
         </div>
         <div class="timer-block">
           <div class="timer" id="timer">00:{{ "%02d"|format(status.session.remaining_time) }}</div>
-          <div class="timer-label">Hold time</div>
+          <div class="timer-label">Time</div>
         </div>
       </div>
 
       <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+
+      <div class="session-overlay camera-countdown hidden" id="camera-countdown" aria-live="polite">
+        <div class="countdown-copy">
+          <span id="countdown-label">Get ready</span>
+          <strong id="countdown-number">5</strong>
+        </div>
+      </div>
+
+      <div class="session-overlay next-preview hidden" id="next-preview" aria-live="polite">
+        <div class="next-copy">
+          <span id="next-eyebrow">Next stretch</span>
+          <h2 id="next-name">{{ status.session.current_stretch }}</h2>
+          <div class="pose-card" aria-hidden="true">
+            <div class="pose-head"></div>
+            <div class="pose-body"></div>
+            <div class="pose-arm left"></div>
+            <div class="pose-arm right"></div>
+            <div class="pose-leg left"></div>
+            <div class="pose-leg right"></div>
+          </div>
+          <div class="next-countdown">Starts in <strong id="next-countdown-number">5</strong></div>
+        </div>
+      </div>
+
+      <div class="session-overlay session-complete hidden" id="session-complete" aria-live="polite">
+        <div class="complete-copy">
+          <span>Session complete</span>
+          <h2>Summary</h2>
+          <div class="complete-score"><strong id="complete-score">0</strong><span>Total score</span></div>
+          <p id="complete-meta">All stretches completed.</p>
+        </div>
+      </div>
     </section>
-
-    <aside class="session-side">
-      <div class="side-card">
-        <h3>Session</h3>
-        <div class="meta-row"><span class="k">Mode</span><span class="v" id="meta-mode">{{ status.session.mode_label }}</span></div>
-        <div class="meta-row"><span class="k">Body focus</span><span class="v" id="meta-focus">{{ status.session.body_focus_label }}</span></div>
-        <div class="meta-row"><span class="k">Duration</span><span class="v" id="meta-duration">{{ status.session.duration }} min</span></div>
-      </div>
-
-      <div class="side-card">
-        <h3>Form feedback</h3>
-        <div class="score-stack">
-          <div>
-            <div class="meta-row"><span class="k">Score</span><span class="v" id="score-label">Placeholder</span></div>
-            <div class="score-big" id="score-value">{{ status.session.score }}</div>
-          </div>
-          <div>
-            <div class="meta-row"><span class="k">Stability</span><span class="v" id="stability-pct">0%</span></div>
-            <div class="bar"><span id="stability-bar"></span></div>
-          </div>
-          <div>
-            <div class="meta-row"><span class="k">Stretch progress</span><span class="v" id="progress-pct">0%</span></div>
-            <div class="bar"><span id="progress-bar-side"></span></div>
-          </div>
-          <p class="wellness-note">Movement guidance only. Awareness and form cues - not medical advice.</p>
-        </div>
-      </div>
-
-      <div class="side-card phone-qr-card {{ 'visible' if status.camera.selected_camera_source != 'USB_CAMERA' and not status.camera.phone_connected else '' }}" id="phonePairing">
-        <h3>Phone camera</h3>
-        <div class="session-qr-row">
-          <img src="/qr.png" alt="Phone camera QR code">
-          <span>Scan QR if phone camera is needed.</span>
-        </div>
-      </div>
-
-      <div class="side-card">
-        <h3>Controls</h3>
-        <div class="controls">
-          <button class="btn btn-primary full" data-action="start">Start</button>
-          <button class="btn" data-action="pause">Pause</button>
-          <button class="btn" data-action="next">Next</button>
-          <button class="btn btn-ghost full" data-action="reset">Reset</button>
-        </div>
-      </div>
-    </aside>
   </main>
 
   <section class="debug-panel {{ 'visible' if debug else '' }}" id="debug-panel">
@@ -113,6 +112,7 @@
     <div class="row"><span>Local URL</span><span id="d-url">--</span></div>
   </section>
 
+  <script src="/static/hardware.js"></script>
   <script src="/static/session.js"></script>
 </body>
 </html>

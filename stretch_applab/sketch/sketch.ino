@@ -1,19 +1,392 @@
 /*
   StretchSense App Lab sketch
 
-  The current Smart Stretch Coach MVP runs the web UI, camera selection,
-  QR phone camera sender, logging, and future inference hook on the UNO Q
-  Linux/Python side.
-
-  This sketch is intentionally minimal so the App Lab package has a valid
-  MCU-side entry point. Add future sensor fusion or bridge calls here.
+  Reads Modulino Knob and Modulino Buttons on the UNO Q MCU side, sends
+  abstract navigation actions to Python through Arduino_RouterBridge, and
+  receives lightweight feedback for Modulino Pixels / button LEDs.
 */
 
+#include <Arduino.h>
+
+#if defined(__has_include)
+  #if __has_include(<Arduino_RouterBridge.h>)
+    #include <Arduino_RouterBridge.h>
+    #define HAS_ROUTER_BRIDGE 1
+  #else
+    #define HAS_ROUTER_BRIDGE 0
+  #endif
+
+  #if __has_include(<Arduino_Modulino.h>)
+    #include <Arduino_Modulino.h>
+    #define HAS_MODULINO_LIBRARY 1
+  #elif __has_include(<Modulino.h>)
+    #include <Modulino.h>
+    #define HAS_MODULINO_LIBRARY 1
+  #else
+    #define HAS_MODULINO_LIBRARY 0
+  #endif
+#else
+  #define HAS_ROUTER_BRIDGE 0
+  #define HAS_MODULINO_LIBRARY 0
+#endif
+
+const unsigned long INPUT_POLL_MS = 25;
+const unsigned long LONG_PRESS_MS = 850;
+const unsigned long FEEDBACK_REFRESH_MS = 80;
+const unsigned long BUTTON_DEBUG_MS = 1000;
+const unsigned long SERIAL_BAUD = 115200;
+const int PIXEL_COUNT = 8;
+
+#if HAS_MODULINO_LIBRARY
+ModulinoKnob modulinoKnob;
+ModulinoButtons modulinoButtons;
+ModulinoPixels modulinoPixels;
+#endif
+
+bool knobAvailable = false;
+bool buttonsAvailable = false;
+bool pixelsAvailable = false;
+
+bool knobPressed = false;
+bool knobLongSent = false;
+unsigned long knobPressedAt = 0;
+int16_t lastKnobValue = 0;
+bool haveKnobValue = false;
+
+bool buttonPressed[3] = {false, false, false};
+bool buttonLongSent[3] = {false, false, false};
+bool buttonIdleState[3] = {false, false, false};
+bool buttonIdleCalibrated = false;
+unsigned long buttonPressedAt[3] = {0, 0, 0};
+
+String feedbackPage = "boot";
+String feedbackState = "";
+String feedbackSelection = "";
+int feedbackValue = 0;
+String lastFeedbackDebug = "";
+unsigned long lastInputMs = 0;
+unsigned long lastFeedbackMs = 0;
+unsigned long lastButtonDebugMs = 0;
+
+const char *buttonAction(int index) {
+  switch (index) {
+    case 0: return "BUTTON_A";
+    case 1: return "BUTTON_B";
+    case 2: return "BUTTON_C";
+    default: return "BUTTON_A";
+  }
+}
+
+const char *buttonLongAction(int index) {
+  switch (index) {
+    case 0: return "BUTTON_A_LONG";
+    case 1: return "BUTTON_B_LONG";
+    case 2: return "BUTTON_C_LONG";
+    default: return "BUTTON_A_LONG";
+  }
+}
+
+void notifyAction(const char *action, int value = 0) {
+  Serial.print("# notify hardware_event action=");
+  Serial.print(action);
+  Serial.print(" value=");
+  Serial.print(value);
+  Serial.print(" bridge=");
+  Serial.println(HAS_ROUTER_BRIDGE ? "yes" : "no");
+#if HAS_ROUTER_BRIDGE
+  Bridge.notify("hardware_event", action, value);
+#else
+  Serial.print("# hardware_event ");
+  Serial.print(action);
+  Serial.print(" ");
+  Serial.println(value);
+#endif
+}
+
+uint8_t scaleColor(uint8_t value, uint8_t brightness) {
+  return (uint8_t)((uint16_t)value * (uint16_t)brightness / 31);
+}
+
+void setPixel(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 18) {
+#if HAS_MODULINO_LIBRARY
+  modulinoPixels.set(index, ModulinoColor(scaleColor(r, brightness), scaleColor(g, brightness), scaleColor(b, brightness)));
+#else
+  (void)index;
+  (void)r;
+  (void)g;
+  (void)b;
+  (void)brightness;
+#endif
+}
+
+void setAllPixels(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 12) {
+#if HAS_MODULINO_LIBRARY
+  if (!pixelsAvailable) return;
+  for (int i = 0; i < PIXEL_COUNT; i++) {
+    setPixel(i, r, g, b, brightness);
+  }
+  modulinoPixels.show();
+#else
+  (void)r;
+  (void)g;
+  (void)b;
+  (void)brightness;
+#endif
+}
+
+void setProgressPixels(uint8_t r, uint8_t g, uint8_t b, int percent, uint8_t brightness = 16) {
+#if HAS_MODULINO_LIBRARY
+  if (!pixelsAvailable) return;
+  int lit = constrain(map(percent, 0, 100, 0, PIXEL_COUNT), 0, PIXEL_COUNT);
+  modulinoPixels.clear();
+  for (int i = 0; i < lit; i++) {
+    setPixel(i, r, g, b, brightness);
+  }
+  modulinoPixels.show();
+#else
+  (void)r;
+  (void)g;
+  (void)b;
+  (void)percent;
+  (void)brightness;
+#endif
+}
+
+uint8_t pulse(unsigned long periodMs, uint8_t low, uint8_t high) {
+  unsigned long phase = millis() % periodMs;
+  unsigned long half = periodMs / 2;
+  float t = phase < half ? (float)phase / (float)half : (float)(periodMs - phase) / (float)half;
+  return low + (uint8_t)((high - low) * t);
+}
+
+void updateButtonLeds() {
+#if HAS_MODULINO_LIBRARY
+  if (!buttonsAvailable) return;
+  bool a = feedbackPage == "landing" || feedbackPage == "setup" || feedbackPage == "session";
+  bool b = feedbackPage == "setup" || feedbackPage == "session";
+  bool c = feedbackPage == "setup" || feedbackPage == "session";
+  modulinoButtons.setLeds(buttonPressed[0] || a, buttonPressed[1] || b, buttonPressed[2] || c);
+#endif
+}
+
+void updatePixels() {
+  if (feedbackPage == "landing") {
+    if (feedbackSelection == "after") setAllPixels(0, 120, 160, 16);
+    else setAllPixels(120, 220, 20, 16);
+    return;
+  }
+
+  if (feedbackPage == "setup") {
+#if HAS_MODULINO_LIBRARY
+    if (!pixelsAvailable) return;
+    int selected = constrain(feedbackValue % PIXEL_COUNT, 0, PIXEL_COUNT - 1);
+    modulinoPixels.clear();
+    for (int i = 0; i < PIXEL_COUNT; i++) {
+      if (i == selected) setPixel(i, 184, 255, 58, 22);
+      else setPixel(i, 16, 24, 32, 4);
+    }
+    modulinoPixels.show();
+#endif
+    return;
+  }
+
+  if (feedbackPage == "session") {
+    if (feedbackState == "READY") {
+      int countdownPercent = constrain((6 - feedbackValue) * 20, 0, 100);
+      setProgressPixels(184, 255, 58, countdownPercent, 20);
+    } else if (feedbackState == "HOLD" || feedbackState == "GOOD") {
+      setProgressPixels(0, 220, 90, feedbackValue, 18);
+    } else if (feedbackState == "DONE") {
+      uint8_t v = pulse(750, 70, 220);
+      setAllPixels(0, v, v, 18);
+    } else if (feedbackState == "NO_CAMERA" || feedbackState == "WAITING_FOR_PHONE") {
+      uint8_t v = pulse(900, 20, 190);
+      setAllPixels(v, 120, 0, 14);
+    } else {
+      setAllPixels(20, 30, 40, 8);
+    }
+    return;
+  }
+
+  setAllPixels(8, 8, 8, 4);
+}
+
+String setFeedback(String page, String state, String selection, int value) {
+  feedbackPage = page;
+  feedbackState = state;
+  feedbackSelection = selection;
+  feedbackValue = constrain(value, 0, 100);
+  String feedbackDebug = page + "|" + state + "|" + selection + "|" + String(feedbackValue);
+  if (feedbackDebug != lastFeedbackDebug) {
+    lastFeedbackDebug = feedbackDebug;
+    Serial.print("# feedback page=");
+    Serial.print(feedbackPage);
+    Serial.print(" state=");
+    Serial.print(feedbackState);
+    Serial.print(" selection=");
+    Serial.print(feedbackSelection);
+    Serial.print(" value=");
+    Serial.println(feedbackValue);
+  }
+  updateButtonLeds();
+  updatePixels();
+  return "{\"ok\":true}";
+}
+
+void handlePressState(bool pressed, bool &lastPressed, bool &longSent, unsigned long &pressedAt, const char *shortAction, const char *longAction) {
+  unsigned long now = millis();
+  if (pressed && !lastPressed) {
+    Serial.print("# input down action=");
+    Serial.println(shortAction);
+    pressedAt = now;
+    longSent = false;
+  }
+
+  if (pressed && !longSent && now - pressedAt >= LONG_PRESS_MS) {
+    Serial.print("# input long action=");
+    Serial.println(longAction);
+    notifyAction(longAction);
+    longSent = true;
+  }
+
+  if (!pressed && lastPressed && !longSent) {
+    Serial.print("# input short action=");
+    Serial.println(shortAction);
+    notifyAction(shortAction);
+  }
+
+  if (!pressed && lastPressed && longSent) {
+    Serial.print("# input release after long action=");
+    Serial.println(longAction);
+  }
+
+  lastPressed = pressed;
+}
+
+void readKnob() {
+#if HAS_MODULINO_LIBRARY
+  if (!knobAvailable) return;
+
+  int16_t value = modulinoKnob.get();
+  if (!haveKnobValue) {
+    lastKnobValue = value;
+    haveKnobValue = true;
+  }
+
+  int16_t delta = value - lastKnobValue;
+  if (delta != 0) {
+    notifyAction(delta > 0 ? "KNOB_RIGHT" : "KNOB_LEFT", delta);
+    lastKnobValue = value;
+  }
+
+  bool pressed = modulinoKnob.isPressed() == HIGH;
+  handlePressState(pressed, knobPressed, knobLongSent, knobPressedAt, "KNOB_PRESS", "KNOB_PRESS_LONG");
+#endif
+}
+
+void readButtons() {
+#if HAS_MODULINO_LIBRARY
+  if (!buttonsAvailable) return;
+  modulinoButtons.update();
+  bool rawNow[3] = {false, false, false};
+  bool pressedNow[3] = {false, false, false};
+  for (int i = 0; i < 3; i++) {
+    rawNow[i] = modulinoButtons.isPressed(i) == HIGH;
+    pressedNow[i] = buttonIdleCalibrated ? rawNow[i] != buttonIdleState[i] : rawNow[i];
+  }
+
+  unsigned long now = millis();
+  if (now - lastButtonDebugMs >= BUTTON_DEBUG_MS) {
+    lastButtonDebugMs = now;
+    Serial.print("# buttons raw A=");
+    Serial.print(rawNow[0]);
+    Serial.print(" B=");
+    Serial.print(rawNow[1]);
+    Serial.print(" C=");
+    Serial.print(rawNow[2]);
+    Serial.print(" pressed A=");
+    Serial.print(pressedNow[0]);
+    Serial.print(" B=");
+    Serial.print(pressedNow[1]);
+    Serial.print(" C=");
+    Serial.println(pressedNow[2]);
+  }
+
+  for (int i = 0; i < 3; i++) {
+    handlePressState(pressedNow[i], buttonPressed[i], buttonLongSent[i], buttonPressedAt[i], buttonAction(i), buttonLongAction(i));
+  }
+  updateButtonLeds();
+#endif
+}
+
+void initHardware() {
+  Serial.print("# compile HAS_ROUTER_BRIDGE=");
+  Serial.println(HAS_ROUTER_BRIDGE);
+  Serial.print("# compile HAS_MODULINO_LIBRARY=");
+  Serial.println(HAS_MODULINO_LIBRARY);
+
+#if HAS_ROUTER_BRIDGE
+  Serial.println("# Bridge.begin");
+  Bridge.begin();
+  Serial.println("# Bridge.provide set_feedback");
+  Bridge.provide("set_feedback", setFeedback);
+  Serial.println("# Arduino_RouterBridge ready.");
+#endif
+
+#if HAS_MODULINO_LIBRARY
+  Serial.println("# Modulino.begin");
+  Modulino.begin();
+  Serial.println("# ModulinoKnob.begin");
+  modulinoKnob.begin();
+  Serial.println("# ModulinoButtons.begin");
+  modulinoButtons.begin();
+  modulinoButtons.update();
+  for (int i = 0; i < 3; i++) {
+    buttonIdleState[i] = modulinoButtons.isPressed(i) == HIGH;
+  }
+  buttonIdleCalibrated = true;
+  Serial.print("# button idle raw A=");
+  Serial.print(buttonIdleState[0]);
+  Serial.print(" B=");
+  Serial.print(buttonIdleState[1]);
+  Serial.print(" C=");
+  Serial.println(buttonIdleState[2]);
+  Serial.println("# ModulinoPixels.begin");
+  modulinoPixels.begin();
+  knobAvailable = true;
+  buttonsAvailable = true;
+  pixelsAvailable = true;
+  Serial.println("# Arduino_Modulino ready: knob/buttons/pixels enabled.");
+  setFeedback("boot", "", "", 0);
+#else
+  Serial.println("# Arduino_Modulino library unavailable.");
+#endif
+
+#if !HAS_ROUTER_BRIDGE
+  Serial.println("# Arduino_RouterBridge library unavailable.");
+#endif
+}
+
 void setup() {
-  // Future MCU-side sensors can be initialized here.
+  Serial.begin(SERIAL_BAUD);
+  unsigned long waitStart = millis();
+  while (!Serial && millis() - waitStart < 1500) {
+    delay(10);
+  }
+  Serial.println("# StretchSense App Lab hardware bridge boot");
+  initHardware();
 }
 
 void loop() {
-  // Future bridge/sensor work can run here.
-  delay(1000);
+  unsigned long now = millis();
+  if (now - lastInputMs >= INPUT_POLL_MS) {
+    lastInputMs = now;
+    readKnob();
+    readButtons();
+  }
+
+  if (now - lastFeedbackMs >= FEEDBACK_REFRESH_MS) {
+    lastFeedbackMs = now;
+    updatePixels();
+  }
 }

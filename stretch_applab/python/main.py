@@ -7,6 +7,13 @@ import time
 
 import uvicorn
 
+os.environ.setdefault("POSE_BACKEND", "movenet")
+os.environ.setdefault("MOVENET_MODEL_PATH", "models/movenet_lightning.tflite")
+os.environ.setdefault("MOVENET_INPUT_SIZE", "192")
+os.environ.setdefault("MOVENET_NUM_THREADS", "2")
+os.environ.setdefault("POSE_ASYNC_ENABLED", "true")
+os.environ.setdefault("POSE_MAX_ASYNC_FPS", "10")
+
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 

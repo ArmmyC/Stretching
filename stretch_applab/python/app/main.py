@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.hardware_bridge import hardware_bridge
 from app import inference
 from app.session_manager import SessionManager
 from app.source_manager import SourceManager
@@ -35,6 +36,7 @@ PHONE_URL = f"{BASE_URL}/phone"
 async def startup() -> None:
     log_startup_details(source_manager.force_mode, BASE_URL)
     logger.info("QR URL generated: %s", PHONE_URL)
+    hardware_bridge.start()
     source_manager.start()
 
 
@@ -116,9 +118,14 @@ async def phone_frame_socket(websocket: WebSocket) -> None:
         source_manager.phone.mark_disconnected(client_id)
 
 
+@app.websocket("/ws/hardware")
+async def hardware_socket(websocket: WebSocket) -> None:
+    await hardware_bridge.connect(websocket)
+
+
 @app.get("/video_feed")
-async def video_feed() -> StreamingResponse:
-    return StreamingResponse(mjpeg_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+async def video_feed(overlay: bool = Query(True)) -> StreamingResponse:
+    return StreamingResponse(mjpeg_generator(draw_overlay=overlay), media_type="multipart/x-mixed-replace; boundary=frame")
 
 
 @app.get("/qr.png")
@@ -129,6 +136,20 @@ async def qr_png() -> Response:
 @app.get("/api/status")
 async def api_status(debug: bool = Query(False)) -> dict[str, Any]:
     return full_status(debug=debug)
+
+
+@app.get("/api/hardware")
+async def api_hardware() -> dict[str, Any]:
+    return {"hardware": hardware_bridge.status()}
+
+
+@app.post("/api/hardware/feedback")
+async def api_hardware_feedback(request: Request) -> dict[str, Any]:
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    return hardware_bridge.feedback(payload)
 
 
 @app.get("/api/health")
@@ -204,12 +225,13 @@ def full_status(debug: bool = False) -> dict[str, Any]:
         "app_host": os.getenv("APP_HOST", "0.0.0.0"),
         "app_port": os.getenv("APP_PORT", "8000"),
         "pose": inference.get_pose_status(debug=debug),
+        "hardware": hardware_bridge.status(),
         "qr_url": PHONE_URL,
         "timestamp": time.time(),
     }
 
 
-async def mjpeg_generator():
+async def mjpeg_generator(draw_overlay: bool = True):
     while True:
         try:
             status = full_status()
@@ -221,6 +243,7 @@ async def mjpeg_generator():
                 "fps": status["camera"]["fps"],
                 "session_state": status["session"]["state"],
                 "score": status["session"]["score"],
+                "draw_frame_labels": draw_overlay,
             }
             processed, metrics = inference.process_frame(frame, context)
             status["inference"] = metrics

@@ -6,7 +6,7 @@
   <title>StretchSense - Quick Stretching Guidance</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body data-hardware-page="landing">
   <main class="kiosk landing-kiosk">
     <header class="top-bar">
       <div class="brand">
@@ -38,7 +38,18 @@
           <div class="arrow" aria-hidden="true">&rsaquo;</div>
         </a>
       </div>
+
+      <aside class="control-guide control-guide--landing" aria-label="Arduino Uno Q controls">
+        <div class="control-guide-title">Arduino Uno Q controls</div>
+        <div class="control-guide-grid">
+          <div class="control-chip"><span>Knob</span><strong>Switch Before / After</strong></div>
+          <div class="control-chip"><span>Press / A</span><strong>Select mode</strong></div>
+          <div class="control-chip muted"><span>B / C</span><strong>No action</strong></div>
+        </div>
+      </aside>
     </section>
   </main>
+  <script src="/static/hardware.js"></script>
+  <script src="/static/landing.js"></script>
 </body>
 </html>

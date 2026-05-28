@@ -6,7 +6,7 @@
   <title>Set your stretch - StretchSense</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body data-hardware-page="setup">
   <main class="kiosk setup-kiosk">
     <section class="setup-grid">
       <form class="panel setup-panel" id="config-form" action="/session" method="get">
@@ -48,6 +48,16 @@
         <button type="submit" class="btn btn-primary btn-xl start-session-btn">
           Start Session &rarr;
         </button>
+
+        <aside class="control-guide control-guide--setup" aria-label="Arduino Uno Q setup controls">
+          <div class="control-guide-title">Arduino Uno Q controls</div>
+          <div class="control-guide-grid">
+            <div class="control-chip"><span>Knob</span><strong>Move highlight</strong></div>
+            <div class="control-chip"><span>Press / A</span><strong>Confirm / start</strong></div>
+            <div class="control-chip"><span>B</span><strong>Back</strong></div>
+            <div class="control-chip"><span>C</span><strong>Start now</strong></div>
+          </div>
+        </aside>
       </form>
 
       <aside class="panel camera-check-panel">
@@ -113,37 +123,7 @@
     </section>
   </main>
 
-  <script>
-    const setupState = {
-      mode: "{{ status.session.mode }}",
-      body_focus: "{{ status.session.body_focus }}",
-      duration: "{{ status.session.duration }}",
-    };
-
-    const hiddenInputs = {
-      mode: document.getElementById("f-mode"),
-      body_focus: document.getElementById("f-body-focus"),
-      duration: document.getElementById("f-duration"),
-    };
-
-    function syncSetupInputs() {
-      hiddenInputs.mode.value = setupState.mode;
-      hiddenInputs.body_focus.value = setupState.body_focus;
-      hiddenInputs.duration.value = setupState.duration;
-    }
-
-    document.querySelectorAll(".segmented").forEach((segmented) => {
-      segmented.addEventListener("click", (event) => {
-        const button = event.target.closest("button");
-        if (!button) return;
-        segmented.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
-        button.classList.add("active");
-        setupState[segmented.dataset.group] = button.dataset.value;
-        syncSetupInputs();
-      });
-    });
-
-    syncSetupInputs();
-  </script>
+  <script src="/static/hardware.js"></script>
+  <script src="/static/setup.js"></script>
 </body>
 </html>

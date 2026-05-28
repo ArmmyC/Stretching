@@ -44,7 +44,8 @@ def process_frame(frame: np.ndarray, context: dict[str, Any] | None = None) -> t
         else:
             pose_metrics = _pose_disabled_metrics()
 
-        _draw_frame_labels(output, context, pose_metrics)
+        if bool(context.get("draw_frame_labels", True)):
+            _draw_frame_labels(output, context, pose_metrics)
 
         metrics = {
             **pose_metrics,

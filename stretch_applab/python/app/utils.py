@@ -54,10 +54,20 @@ def log_startup_details(force_camera_mode: str, public_base_url: str) -> None:
     logger.info("PUBLIC_BASE_URL=%s", public_base_url or "<auto local IP>")
     logger.info("POSE_TRACKING_ENABLED=%s", os.getenv("POSE_TRACKING_ENABLED", "true"))
     logger.info("POSE_BACKEND=%s", os.getenv("POSE_BACKEND", "mediapipe"))
+    logger.info("POSE_DELEGATE=%s", os.getenv("POSE_DELEGATE", "cpu"))
     logger.info("POSE_MODEL_PATH=%s", os.getenv("POSE_MODEL_PATH", "models/pose_landmarker.task"))
     logger.info("POSE_DRAW_LANDMARKS=%s", os.getenv("POSE_DRAW_LANDMARKS", "true"))
     logger.info("POSE_INFERENCE_WIDTH=%s", os.getenv("POSE_INFERENCE_WIDTH", "320"))
     logger.info("POSE_FRAME_STRIDE=%s", os.getenv("POSE_FRAME_STRIDE", "1"))
+    logger.info("POSE_ASYNC_ENABLED=%s", os.getenv("POSE_ASYNC_ENABLED", "true"))
+    logger.info("POSE_MAX_ASYNC_FPS=%s", os.getenv("POSE_MAX_ASYNC_FPS", "8"))
+    logger.info("NCNN_MODEL_DIR=%s", os.getenv("NCNN_MODEL_DIR", "models/yolov8n-pose_ncnn_model"))
+    logger.info("NCNN_INPUT_SIZE=%s", os.getenv("NCNN_INPUT_SIZE", "320"))
+    logger.info("NCNN_USE_VULKAN=%s", os.getenv("NCNN_USE_VULKAN", "true"))
+    logger.info("NCNN_GPU_INDEX=%s", os.getenv("NCNN_GPU_INDEX", "0"))
+    logger.info("MOVENET_MODEL_PATH=%s", os.getenv("MOVENET_MODEL_PATH", "models/movenet_lightning.tflite"))
+    logger.info("MOVENET_INPUT_SIZE=%s", os.getenv("MOVENET_INPUT_SIZE", "192"))
+    logger.info("MOVENET_NUM_THREADS=%s", os.getenv("MOVENET_NUM_THREADS", "2"))
 
 
 def get_env_int(name: str, default: int) -> int:
