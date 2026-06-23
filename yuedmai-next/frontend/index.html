@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101820" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>YUEDMAI Next</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-card">
+        <p class="eyebrow">Daily Quest</p>
+        <h1>Stretch like it is a game.</h1>
+        <p class="lede">Use your notebook camera, complete a short stretch quest, earn XP, and build a streak.</p>
+        <div class="actions">
+          <button id="start-camera">Start Camera</button>
+          <button id="start-session" class="secondary">Start Quest</button>
+          <button id="enable-notifications" class="secondary">Enable Reminders</button>
+        </div>
+      </section>
+
+      <section class="game-grid">
+        <article class="camera-card">
+          <div class="camera-frame">
+            <video id="camera-preview" autoplay playsinline muted></video>
+            <div id="pose-message" class="pose-message">Camera idle</div>
+          </div>
+        </article>
+
+        <article class="hud-card">
+          <p class="eyebrow">Current Stretch</p>
+          <h2 id="stretch-name">Not started</h2>
+          <div class="meter">
+            <span>XP</span>
+            <strong id="xp-value">0</strong>
+          </div>
+          <div class="meter">
+            <span>Score</span>
+            <strong id="score-value">0</strong>
+          </div>
+          <div class="stars" id="stars">☆☆☆</div>
+          <button id="advance-stretch" class="wide">Next Stretch</button>
+        </article>
+
+        <article class="quest-card">
+          <p class="eyebrow">Quest Board</p>
+          <ul id="quest-list"></ul>
+        </article>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
